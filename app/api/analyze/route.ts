@@ -1,15 +1,10 @@
 import { createDeepSeek } from '@ai-sdk/deepseek';
-import { createGoogle } from '@ai-sdk/google';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { ANALYSIS_LANGUAGE, DEFAULT_LOCALE, isLocale, type Locale } from '@/app/i18n';
 
 const deepseek = createDeepSeek({
   apiKey: process.env.DEEPSEEK_API_KEY,
-});
-
-const google = createGoogle({
-  apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 const API_ERRORS: Record<Locale, {
@@ -20,20 +15,20 @@ const API_ERRORS: Record<Locale, {
 }> = {
   en: {
     imageRequired: 'Image is required',
-    missingKey: 'No AI API key is configured',
-    invalidKey: 'AI API key is invalid or missing',
+    missingKey: 'DEEPSEEK_API_KEY is not configured',
+    invalidKey: 'DEEPSEEK_API_KEY is invalid or missing',
     failed: 'Failed to analyze label',
   },
   'zh-Hant': {
     imageRequired: '請提供圖片',
-    missingKey: '未設定 AI API 金鑰',
-    invalidKey: 'AI API 金鑰無效或未設定',
+    missingKey: '未設定 DEEPSEEK_API_KEY',
+    invalidKey: 'DEEPSEEK_API_KEY 無效或未設定',
     failed: '無法分析標籤',
   },
   'zh-Hans': {
     imageRequired: '请提供图片',
-    missingKey: '未设置 AI API 密钥',
-    invalidKey: 'AI API 密钥无效或未设置',
+    missingKey: '未设置 DEEPSEEK_API_KEY',
+    invalidKey: 'DEEPSEEK_API_KEY 无效或未设置',
     failed: '无法分析标签',
   },
 };
@@ -73,23 +68,19 @@ export async function POST(req: Request) {
       return Response.json({ error: API_ERRORS[locale].imageRequired }, { status: 400 });
     }
 
-    const hasDeepSeekKey = Boolean(process.env.DEEPSEEK_API_KEY);
-    const hasGoogleKey = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY);
-
-    if (!hasDeepSeekKey && !hasGoogleKey) {
+    if (!process.env.DEEPSEEK_API_KEY) {
       return Response.json({ error: API_ERRORS[locale].missingKey }, { status: 500 });
     }
 
     const mediaType = /^data:(image\/[\w.+-]+);base64,/.exec(imageBase64)?.[1] ?? 'image/jpeg';
 
-    const model = hasDeepSeekKey ? deepseek('deepseek-flash') : google('gemini-3.8-flash');
+    const modelName = 'deepseek-flash';
+    console.log(`[analyze] using model: ${modelName}`);
 
     const { output } = await generateText({
-      model,
+      model: deepseek(modelName),
       output: Output.object({ schema: AnalysisSchema }),
-      ...(hasDeepSeekKey
-        ? { providerOptions: { deepseek: { thinking: { type: 'disabled' as const } } } }
-        : {}),
+      providerOptions: { deepseek: { thinking: { type: 'disabled' as const } } },
       messages: [
         {
           role: 'user',
@@ -108,7 +99,7 @@ export async function POST(req: Request) {
       ],
     });
 
-    return Response.json(output);
+    return Response.json({ ...output, model: modelName });
   } catch (error) {
     console.error(error);
     const message =
