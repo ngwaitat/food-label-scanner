@@ -54,7 +54,8 @@ export const STRINGS: Record<Locale, Strings> = {
     categoryLabels: {
       MEAT: 'Meat',
       FISH_SEAFOOD: 'Fish & Seafood',
-      DAIRY_EGG: 'Dairy & Egg',
+      DAIRY: 'Dairy',
+      EGG: 'Egg',
       ADDITIVE: 'Additive',
       OTHER: 'Other',
     },
@@ -78,7 +79,8 @@ export const STRINGS: Record<Locale, Strings> = {
     categoryLabels: {
       MEAT: '肉類',
       FISH_SEAFOOD: '魚類及海鮮',
-      DAIRY_EGG: '奶類及蛋類',
+      DAIRY: '奶類',
+      EGG: '蛋類',
       ADDITIVE: '添加劑',
       OTHER: '其他',
     },
@@ -102,7 +104,8 @@ export const STRINGS: Record<Locale, Strings> = {
     categoryLabels: {
       MEAT: '肉类',
       FISH_SEAFOOD: '鱼类及海鲜',
-      DAIRY_EGG: '奶类及蛋类',
+      DAIRY: '奶类',
+      EGG: '蛋类',
       ADDITIVE: '添加剂',
       OTHER: '其他',
     },

@@ -39,7 +39,7 @@ const AnalysisSchema = z.object({
   flaggedIngredients: z.array(
     z.object({
       name: z.string(),
-      category: z.enum(['MEAT', 'FISH_SEAFOOD', 'DAIRY_EGG', 'ADDITIVE', 'OTHER']),
+      category: z.enum(['MEAT', 'FISH_SEAFOOD', 'DAIRY', 'EGG', 'ADDITIVE', 'OTHER']),
       reason: z.string(),
     })
   ),
