@@ -39,6 +39,11 @@ export interface Strings {
   readImageError: string;
   genericError: string;
   language: string;
+  zoomHint: string;
+  zoomIn: string;
+  zoomOut: string;
+  zoomReset: string;
+  close: string;
   statusLabels: Record<Status, string>;
   categoryLabels: Record<string, string>;
 }
@@ -54,6 +59,11 @@ export const STRINGS: Record<Locale, Strings> = {
     readImageError: 'Could not read the image',
     genericError: 'Something went wrong',
     language: 'Language',
+    zoomHint: 'View larger',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    zoomReset: 'Reset zoom',
+    close: 'Close',
     statusLabels: {
       VEGAN: 'Vegan',
       OVO_VEGETARIAN: 'Ovo-vegetarian',
@@ -83,6 +93,11 @@ export const STRINGS: Record<Locale, Strings> = {
     readImageError: '無法讀取圖片',
     genericError: '發生錯誤，請再試一次',
     language: '語言',
+    zoomHint: '放大檢視',
+    zoomIn: '放大',
+    zoomOut: '縮小',
+    zoomReset: '重設縮放',
+    close: '關閉',
     statusLabels: {
       VEGAN: '純素',
       OVO_VEGETARIAN: '蛋素',
@@ -112,6 +127,11 @@ export const STRINGS: Record<Locale, Strings> = {
     readImageError: '无法读取图片',
     genericError: '发生错误，请再试一次',
     language: '语言',
+    zoomHint: '放大查看',
+    zoomIn: '放大',
+    zoomOut: '缩小',
+    zoomReset: '重置缩放',
+    close: '关闭',
     statusLabels: {
       VEGAN: '纯素',
       OVO_VEGETARIAN: '蛋素',

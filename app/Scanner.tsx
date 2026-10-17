@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import imageCompression from 'browser-image-compression';
-import { Check, Globe } from 'lucide-react';
+import { Check, Globe, Search } from 'lucide-react';
 import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale, type Status } from './i18n';
+import ZoomModal from './ZoomModal';
 
 interface FlaggedIngredient {
   name: string;
@@ -27,6 +28,8 @@ const STATUS_STYLES: Record<Status, string> = {
   UNKNOWN: 'bg-gray-100 text-gray-800',
 };
 
+const CATEGORY_ORDER = ['MEAT', 'FISH_SEAFOOD', 'DAIRY', 'EGG', 'ADDITIVE', 'FIVE_PUNGENT', 'OTHER'];
+
 interface ScannerProps {
   initialLocale: Locale;
 }
@@ -47,6 +50,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const t = STRINGS[locale];
 
   useEffect(() => {
@@ -138,9 +142,19 @@ export default function Scanner({ initialLocale }: ScannerProps) {
 
       {/* Image Preview */}
       {preview && (
-        <div className="relative w-full h-48 rounded-lg overflow-hidden border">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt={t.previewAlt} className="w-full h-full object-cover" />
+        <div className="relative w-full h-48 rounded-lg overflow-hidden border bg-slate-100">
+          <button
+            type="button"
+            onClick={() => setViewerOpen(true)}
+            aria-label={t.zoomHint}
+            className="w-full h-full block"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt={t.previewAlt} className="w-full h-full object-cover" />
+            <span className="absolute bottom-2 right-2 p-1.5 rounded-full bg-black/50 text-white">
+              <Search className="w-4 h-4" />
+            </span>
+          </button>
         </div>
       )}
 
@@ -159,18 +173,27 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           <p className="text-sm text-gray-600">{result.summary}</p>
 
           {result.flaggedIngredients?.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <h3 className="text-xs font-bold text-gray-500 uppercase">{t.flagged}</h3>
-              <ul className="space-y-1">
-                {result.flaggedIngredients.map((item, idx) => (
-                  <li key={idx} className="text-xs bg-white p-2 rounded border">
-                    <span className="font-bold text-red-600">{item.name}</span>
-                    {locale === 'en'
-                      ? ` (${t.categoryLabels[item.category] ?? item.category}): ${item.reason}`
-                      : `（${t.categoryLabels[item.category] ?? item.category}）：${item.reason}`}
-                  </li>
-                ))}
-              </ul>
+              {CATEGORY_ORDER.map((cat) => {
+                const items = result.flaggedIngredients.filter((item) => item.category === cat);
+                if (items.length === 0) return null;
+                return (
+                  <div key={cat} className="space-y-1">
+                    <h4 className="text-xs font-semibold text-gray-700">
+                      {t.categoryLabels[cat] ?? cat}
+                    </h4>
+                    <ul className="space-y-1">
+                      {items.map((item, idx) => (
+                        <li key={idx} className="text-xs bg-white p-2 rounded border text-gray-700">
+                          <span className="font-bold text-gray-900">{item.name}</span>
+                          {locale === 'en' ? `: ${item.reason}` : `：${item.reason}`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -214,6 +237,16 @@ export default function Scanner({ initialLocale }: ScannerProps) {
             </ul>
           </div>
         </div>
+      )}
+
+      {/* Zoom Viewer */}
+      {preview && viewerOpen && (
+        <ZoomModal
+          src={preview}
+          alt={t.previewAlt}
+          locale={locale}
+          onClose={() => setViewerOpen(false)}
+        />
       )}
     </main>
   );
