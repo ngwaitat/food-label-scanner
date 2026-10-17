@@ -134,7 +134,6 @@ export default function Scanner({ initialLocale }: ScannerProps) {
         <input
           type="file"
           accept="image/*"
-          capture="environment"
           onChange={handleImageUpload}
           className="hidden"
           id="camera-input"
