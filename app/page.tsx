@@ -15,11 +15,26 @@ interface AnalysisResult {
   flaggedIngredients: FlaggedIngredient[];
 }
 
+const STATUS_LABELS: Record<AnalysisResult['status'], string> = {
+  VEGAN: '純素',
+  VEGETARIAN: '蛋奶素',
+  NON_VEGETARIAN: '非素食',
+  UNKNOWN: '無法判斷',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  MEAT: '肉類',
+  FISH_SEAFOOD: '魚類及海鮮',
+  DAIRY_EGG: '奶類及蛋類',
+  ADDITIVE: '添加劑',
+  OTHER: '其他',
+};
+
 function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read the image'));
+    reader.onerror = () => reject(reader.error ?? new Error('無法讀取圖片'));
     reader.readAsDataURL(file);
   });
 }
@@ -58,13 +73,13 @@ export default function Home() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        throw new Error(data?.error ?? 'Something went wrong');
+        throw new Error(data?.error ?? '發生錯誤，請再試一次');
       }
 
       setResult(data as AnalysisResult);
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : '發生錯誤，請再試一次');
     } finally {
       setLoading(false);
       input.value = '';
@@ -73,7 +88,7 @@ export default function Home() {
 
   return (
     <main className="max-w-md mx-auto p-4 space-y-6 font-sans">
-      <h1 className="text-2xl font-bold text-center">Food Label Scanner</h1>
+      <h1 className="text-2xl font-bold text-center">食品標籤掃描器</h1>
 
       {/* Camera / File Input */}
       <div className="flex flex-col items-center gap-4 border-2 border-dashed border-gray-300 p-6 rounded-xl">
@@ -92,7 +107,7 @@ export default function Home() {
             loading ? 'bg-emerald-400 cursor-wait' : 'bg-emerald-600 cursor-pointer hover:bg-emerald-700'
           }`}
         >
-          {loading ? 'Analyzing...' : 'Snap or Upload Label'}
+          {loading ? '分析中…' : '拍攝或上載標籤'}
         </label>
       </div>
 
@@ -105,7 +120,7 @@ export default function Home() {
       {preview && (
         <div className="relative w-full h-48 rounded-lg overflow-hidden border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt="Label preview" className="w-full h-full object-cover" />
+          <img src={preview} alt="標籤預覽" className="w-full h-full object-cover" />
         </div>
       )}
 
@@ -113,7 +128,7 @@ export default function Home() {
       {result && (
         <div className="space-y-4 p-4 rounded-xl border bg-slate-50">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-gray-700">Status:</span>
+            <span className="font-semibold text-gray-700">狀態：</span>
             <span
               className={`px-3 py-1 rounded-full text-xs font-bold ${
                 result.status === 'VEGAN'
@@ -123,7 +138,7 @@ export default function Home() {
                   : 'bg-red-100 text-red-800'
               }`}
             >
-              {result.status}
+              {STATUS_LABELS[result.status]}
             </span>
           </div>
 
@@ -131,11 +146,11 @@ export default function Home() {
 
           {result.flaggedIngredients?.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-xs font-bold text-gray-500 uppercase">Flagged Ingredients</h3>
+              <h3 className="text-xs font-bold text-gray-500 uppercase">需要注意的成分</h3>
               <ul className="space-y-1">
                 {result.flaggedIngredients.map((item, idx) => (
                   <li key={idx} className="text-xs bg-white p-2 rounded border">
-                    <span className="font-bold text-red-600">{item.name}</span> ({item.category}): {item.reason}
+                    <span className="font-bold text-red-600">{item.name}</span>（{CATEGORY_LABELS[item.category] ?? item.category}）：{item.reason}
                   </li>
                 ))}
               </ul>
