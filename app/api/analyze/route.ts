@@ -39,7 +39,7 @@ const AnalysisSchema = z.object({
   flaggedIngredients: z.array(
     z.object({
       name: z.string(),
-      category: z.enum(['MEAT', 'FISH_SEAFOOD', 'DAIRY', 'EGG', 'ADDITIVE', 'OTHER']),
+      category: z.enum(['MEAT', 'FISH_SEAFOOD', 'DAIRY', 'EGG', 'ADDITIVE', 'FIVE_PUNGENT', 'OTHER']),
       reason: z.string(),
     })
   ),
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
           content: [
             {
               type: 'text',
-              text: `Analyze this food label ingredient list. Classify the product (VEGAN, VEGETARIAN, or NON_VEGETARIAN) and list any animal-derived ingredients or additives. Write the summary and every reason in ${ANALYSIS_LANGUAGE[locale]}. Keep ingredient names as they appear on the label, and keep the category values in English as specified.`,
+              text: `Analyze this food label ingredient list. Classify the product (VEGAN, VEGETARIAN, or NON_VEGETARIAN) and list any animal-derived ingredients or additives. Also flag any ingredients belonging to the Buddhist 五辛 (five pungent vegetables: scallion/onion, garlic, leek, chive, and asafoetida) and categorize them as FIVE_PUNGENT. Write the summary and every reason in ${ANALYSIS_LANGUAGE[locale]}. Keep ingredient names as they appear on the label, and keep the category values in English as specified.`,
             },
             {
               type: 'file',
