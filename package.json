@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/deepseek": "^3.0.67",
     "@ai-sdk/google": "^4.0.99",
     "ai": "^7.0.143",
     "browser-image-compression": "^2.0.2",
