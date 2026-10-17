@@ -112,7 +112,12 @@ export default function Scanner({ initialLocale }: ScannerProps) {
         <Globe className="w-5 h-5" />
       </button>
 
-      <h1 className="text-2xl font-bold text-center pt-8">{t.title}</h1>
+      <div className="flex justify-center pt-8">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.jpg" alt="" className="w-20 h-20 rounded-2xl object-cover shadow-sm" />
+      </div>
+
+      <h1 className="text-2xl font-bold text-center">{t.title}</h1>
 
       {/* Camera / File Input */}
       <div className="flex flex-col items-center gap-4 border-2 border-dashed border-gray-300 p-6 rounded-xl">
