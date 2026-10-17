@@ -16,6 +16,7 @@ interface FlaggedIngredient {
 interface AnalysisResult {
   status: Status;
   summary: string;
+  ingredients?: string[];
   flaggedIngredients: FlaggedIngredient[];
 }
 
@@ -207,6 +208,19 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           </div>
 
           <p className="text-sm text-gray-600">{result.summary}</p>
+
+          {result.ingredients && result.ingredients.length > 0 && (
+            <div className="space-y-1">
+              <h3 className="text-xs font-bold text-gray-500 uppercase">{t.ingredients}</h3>
+              <ul className="space-y-1">
+                {result.ingredients.map((name, idx) => (
+                  <li key={idx} className="text-xs bg-white p-2 rounded border text-gray-700">
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {result.flaggedIngredients?.length > 0 && (
             <div className="space-y-3">

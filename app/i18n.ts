@@ -37,6 +37,7 @@ export interface Strings {
   analyzing: string;
   status: string;
   flagged: string;
+  ingredients: string;
   previewAlt: string;
   readImageError: string;
   genericError: string;
@@ -61,6 +62,7 @@ export const STRINGS: Record<Locale, Strings> = {
     analyzing: 'Analyzing...',
     status: 'Status:',
     flagged: 'Flagged Ingredients',
+    ingredients: 'Ingredients',
     previewAlt: 'Label preview',
     readImageError: 'Could not read the image',
     genericError: 'Something went wrong',
@@ -99,6 +101,7 @@ export const STRINGS: Record<Locale, Strings> = {
     analyzing: '分析中…',
     status: '狀態：',
     flagged: '需要注意的成分',
+    ingredients: '成分',
     previewAlt: '標籤預覽',
     readImageError: '無法讀取圖片',
     genericError: '發生錯誤，請再試一次',
@@ -137,6 +140,7 @@ export const STRINGS: Record<Locale, Strings> = {
     analyzing: '分析中…',
     status: '状态：',
     flagged: '需要注意的成分',
+    ingredients: '成分',
     previewAlt: '标签预览',
     readImageError: '无法读取图片',
     genericError: '发生错误，请再试一次',
