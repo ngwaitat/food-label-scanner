@@ -45,7 +45,7 @@ export interface Strings {
 
 export const STRINGS: Record<Locale, Strings> = {
   en: {
-    title: 'Food Label Scanner',
+    title: 'Vegan & Vegetarian Scanner',
     upload: 'Snap or Upload Label',
     analyzing: 'Analyzing...',
     status: 'Status:',
@@ -74,7 +74,7 @@ export const STRINGS: Record<Locale, Strings> = {
     },
   },
   'zh-Hant': {
-    title: '食品標籤掃描器',
+    title: '素食標籤掃描器',
     upload: '拍攝或上載標籤',
     analyzing: '分析中…',
     status: '狀態：',
@@ -103,7 +103,7 @@ export const STRINGS: Record<Locale, Strings> = {
     },
   },
   'zh-Hans': {
-    title: '食品标签扫描器',
+    title: '素食标签扫描器',
     upload: '拍摄或上传标签',
     analyzing: '分析中…',
     status: '状态：',

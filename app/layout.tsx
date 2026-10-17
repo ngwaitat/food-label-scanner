@@ -4,7 +4,7 @@ import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from './i18n';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '食品標籤掃描器',
+  title: '素食標籤掃描器',
   description: '掃描食品標籤，檢查產品是否為純素或蛋奶素。',
 };
 
