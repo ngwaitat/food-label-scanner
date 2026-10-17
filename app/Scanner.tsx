@@ -17,7 +17,6 @@ interface AnalysisResult {
   status: Status;
   summary: string;
   flaggedIngredients: FlaggedIngredient[];
-  model?: string;
 }
 
 const STATUS_STYLES: Record<Status, string> = {
@@ -232,10 +231,6 @@ export default function Scanner({ initialLocale }: ScannerProps) {
                 );
               })}
             </div>
-          )}
-
-          {result.model && (
-            <p className="text-[10px] text-gray-400">Model: {result.model}</p>
           )}
         </div>
       )}
