@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import imageCompression from 'browser-image-compression';
-import { Check, Globe, Search } from 'lucide-react';
+import { Check, Globe, Info, Search } from 'lucide-react';
 import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale, type Status } from './i18n';
 import ZoomModal from './ZoomModal';
+import InfoDialog from './InfoDialog';
 
 interface FlaggedIngredient {
   name: string;
@@ -51,6 +52,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const t = STRINGS[locale];
 
   useEffect(() => {
@@ -112,9 +114,17 @@ export default function Scanner({ initialLocale }: ScannerProps) {
         <Globe className="w-5 h-5" />
       </button>
 
-      <div className="flex justify-center pt-8">
+      <div className="flex justify-center items-start gap-2 pt-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.jpg" alt="" className="w-20 h-20 rounded-2xl object-cover shadow-sm" />
+        <button
+          type="button"
+          onClick={() => setInfoOpen(true)}
+          aria-label={t.info}
+          className="p-2 rounded-full bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+        >
+          <Info className="w-4 h-4" />
+        </button>
       </div>
 
       <h1 className="text-2xl font-bold text-center">{t.title}</h1>
@@ -253,6 +263,9 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           onClose={() => setViewerOpen(false)}
         />
       )}
+
+      {/* Info Dialog */}
+      {infoOpen && <InfoDialog locale={locale} onClose={() => setInfoOpen(false)} />}
     </main>
   );
 }

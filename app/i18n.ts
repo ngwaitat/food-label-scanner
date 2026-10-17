@@ -44,6 +44,8 @@ export interface Strings {
   zoomOut: string;
   zoomReset: string;
   close: string;
+  info: string;
+  followUs: string;
   statusLabels: Record<Status, string>;
   categoryLabels: Record<string, string>;
 }
@@ -64,6 +66,8 @@ export const STRINGS: Record<Locale, Strings> = {
     zoomOut: 'Zoom out',
     zoomReset: 'Reset zoom',
     close: 'Close',
+    info: 'Info',
+    followUs: 'Follow us',
     statusLabels: {
       VEGAN: 'Vegan',
       OVO_VEGETARIAN: 'Ovo-vegetarian',
@@ -98,6 +102,8 @@ export const STRINGS: Record<Locale, Strings> = {
     zoomOut: '縮小',
     zoomReset: '重設縮放',
     close: '關閉',
+    info: '資訊',
+    followUs: '追蹤我們',
     statusLabels: {
       VEGAN: '純素',
       OVO_VEGETARIAN: '蛋素',
@@ -132,6 +138,8 @@ export const STRINGS: Record<Locale, Strings> = {
     zoomOut: '缩小',
     zoomReset: '重置缩放',
     close: '关闭',
+    info: '信息',
+    followUs: '关注我们',
     statusLabels: {
       VEGAN: '纯素',
       OVO_VEGETARIAN: '蛋素',
