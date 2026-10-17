@@ -134,19 +134,38 @@ export default function Scanner({ initialLocale }: ScannerProps) {
         <input
           type="file"
           accept="image/*"
+          capture="environment"
           onChange={handleImageUpload}
           className="hidden"
           id="camera-input"
           disabled={loading}
         />
-        <label
-          htmlFor="camera-input"
-          className={`px-6 py-3 rounded-lg font-medium text-white transition ${
-            loading ? 'bg-emerald-400 cursor-wait' : 'bg-emerald-600 cursor-pointer hover:bg-emerald-700'
-          }`}
-        >
-          {loading ? t.analyzing : t.upload}
-        </label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="hidden"
+          id="gallery-input"
+          disabled={loading}
+        />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <label
+            htmlFor="camera-input"
+            className={`px-6 py-3 rounded-lg font-medium text-white text-center transition ${
+              loading ? 'bg-emerald-400 cursor-wait' : 'bg-emerald-600 cursor-pointer hover:bg-emerald-700'
+            }`}
+          >
+            {loading ? t.analyzing : t.snap}
+          </label>
+          <label
+            htmlFor="gallery-input"
+            className={`px-6 py-3 rounded-lg font-medium text-white text-center transition ${
+              loading ? 'bg-emerald-400 cursor-wait' : 'bg-emerald-600 cursor-pointer hover:bg-emerald-700'
+            }`}
+          >
+            {loading ? t.analyzing : t.uploadPhoto}
+          </label>
+        </div>
       </div>
 
       {/* Error */}

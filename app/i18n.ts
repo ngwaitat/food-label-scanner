@@ -32,6 +32,8 @@ export function isLocale(value: unknown): value is Locale {
 export interface Strings {
   title: string;
   upload: string;
+  snap: string;
+  uploadPhoto: string;
   analyzing: string;
   status: string;
   flagged: string;
@@ -54,6 +56,8 @@ export const STRINGS: Record<Locale, Strings> = {
   en: {
     title: 'Vegan & Vegetarian Scanner',
     upload: 'Snap or Upload Label',
+    snap: 'Take Photo',
+    uploadPhoto: 'Upload Photo',
     analyzing: 'Analyzing...',
     status: 'Status:',
     flagged: 'Flagged Ingredients',
@@ -90,6 +94,8 @@ export const STRINGS: Record<Locale, Strings> = {
   'zh-Hant': {
     title: '素食標籤掃描器',
     upload: '拍攝或上載標籤',
+    snap: '拍照',
+    uploadPhoto: '上載相片',
     analyzing: '分析中…',
     status: '狀態：',
     flagged: '需要注意的成分',
@@ -126,6 +132,8 @@ export const STRINGS: Record<Locale, Strings> = {
   'zh-Hans': {
     title: '素食标签扫描器',
     upload: '拍摄或上传标签',
+    snap: '拍照',
+    uploadPhoto: '上传照片',
     analyzing: '分析中…',
     status: '状态：',
     flagged: '需要注意的成分',
