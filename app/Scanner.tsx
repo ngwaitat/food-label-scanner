@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import imageCompression from 'browser-image-compression';
-import { Check, Globe, Info, Search } from 'lucide-react';
+import { Check, Globe, Info, Loader2, Search } from 'lucide-react';
 import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale, type Status } from './i18n';
 import ZoomModal from './ZoomModal';
 import InfoDialog from './InfoDialog';
@@ -148,24 +148,27 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           id="gallery-input"
           disabled={loading}
         />
-        <div className="flex flex-col sm:flex-row gap-3">
-          <label
-            htmlFor="camera-input"
-            className={`px-6 py-3 rounded-lg font-medium text-white text-center transition ${
-              loading ? 'bg-emerald-400 cursor-wait' : 'bg-emerald-600 cursor-pointer hover:bg-emerald-700'
-            }`}
-          >
-            {loading ? t.analyzing : t.snap}
-          </label>
-          <label
-            htmlFor="gallery-input"
-            className={`px-6 py-3 rounded-lg font-medium text-white text-center transition ${
-              loading ? 'bg-emerald-400 cursor-wait' : 'bg-emerald-600 cursor-pointer hover:bg-emerald-700'
-            }`}
-          >
-            {loading ? t.analyzing : t.uploadPhoto}
-          </label>
-        </div>
+        {loading ? (
+          <div className="flex items-center gap-2 text-emerald-700 font-medium">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            {t.analyzing}
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-3">
+            <label
+              htmlFor="camera-input"
+              className="px-6 py-3 rounded-lg font-medium text-white text-center bg-emerald-600 cursor-pointer hover:bg-emerald-700 transition"
+            >
+              {t.snap}
+            </label>
+            <label
+              htmlFor="gallery-input"
+              className="px-6 py-3 rounded-lg font-medium text-white text-center bg-emerald-600 cursor-pointer hover:bg-emerald-700 transition"
+            >
+              {t.uploadPhoto}
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Error */}
