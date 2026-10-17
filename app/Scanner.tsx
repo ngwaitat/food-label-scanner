@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import imageCompression from 'browser-image-compression';
 import { Check, Globe } from 'lucide-react';
-import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale } from './i18n';
+import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale, type Status } from './i18n';
 
 interface FlaggedIngredient {
   name: string;
@@ -12,10 +12,20 @@ interface FlaggedIngredient {
 }
 
 interface AnalysisResult {
-  status: 'VEGAN' | 'VEGETARIAN' | 'NON_VEGETARIAN' | 'UNKNOWN';
+  status: Status;
   summary: string;
   flaggedIngredients: FlaggedIngredient[];
 }
+
+const STATUS_STYLES: Record<Status, string> = {
+  VEGAN: 'bg-green-100 text-green-800',
+  OVO_VEGETARIAN: 'bg-yellow-100 text-yellow-800',
+  LACTO_VEGETARIAN: 'bg-yellow-100 text-yellow-800',
+  LACTO_OVO_VEGETARIAN: 'bg-yellow-100 text-yellow-800',
+  PUNGENT_VEGETARIAN: 'bg-yellow-100 text-yellow-800',
+  NON_VEGETARIAN: 'bg-red-100 text-red-800',
+  UNKNOWN: 'bg-gray-100 text-gray-800',
+};
 
 interface ScannerProps {
   initialLocale: Locale;
@@ -140,13 +150,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           <div className="flex items-center justify-between">
             <span className="font-semibold text-gray-700">{t.status}</span>
             <span
-              className={`px-3 py-1 rounded-full text-xs font-bold ${
-                result.status === 'VEGAN'
-                  ? 'bg-green-100 text-green-800'
-                  : result.status === 'VEGETARIAN'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
+              className={`px-3 py-1 rounded-full text-xs font-bold ${STATUS_STYLES[result.status]}`}
             >
               {t.statusLabels[result.status]}
             </span>

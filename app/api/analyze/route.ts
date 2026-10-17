@@ -34,7 +34,15 @@ const API_ERRORS: Record<Locale, {
 };
 
 const AnalysisSchema = z.object({
-  status: z.enum(['VEGAN', 'VEGETARIAN', 'NON_VEGETARIAN', 'UNKNOWN']),
+  status: z.enum([
+    'VEGAN',
+    'OVO_VEGETARIAN',
+    'LACTO_VEGETARIAN',
+    'LACTO_OVO_VEGETARIAN',
+    'PUNGENT_VEGETARIAN',
+    'NON_VEGETARIAN',
+    'UNKNOWN',
+  ]),
   summary: z.string(),
   flaggedIngredients: z.array(
     z.object({
@@ -75,7 +83,7 @@ export async function POST(req: Request) {
           content: [
             {
               type: 'text',
-              text: `Analyze this food label ingredient list. Classify the product (VEGAN, VEGETARIAN, or NON_VEGETARIAN) and list any animal-derived ingredients or additives. Also flag any ingredients belonging to the Buddhist 五辛 (five pungent vegetables: scallion/onion, garlic, leek, chive, and asafoetida) and categorize them as FIVE_PUNGENT. Write the summary and every reason in ${ANALYSIS_LANGUAGE[locale]}. Keep ingredient names as they appear on the label, and keep the category values in English as specified.`,
+              text: `Analyze this food label ingredient list and classify the product into exactly one of these categories: VEGAN (no meat, fish, seafood, dairy, egg, honey, or 五辛), OVO_VEGETARIAN (contains egg but no dairy or 五辛), LACTO_VEGETARIAN (contains dairy but no egg or 五辛), LACTO_OVO_VEGETARIAN (contains dairy and egg but no 五辛), PUNGENT_VEGETARIAN (otherwise vegan but contains 五辛), NON_VEGETARIAN (contains meat, fish, or seafood), or UNKNOWN (cannot determine). List any animal-derived ingredients or additives, and flag any ingredients belonging to the Buddhist 五辛 (five pungent vegetables: scallion/onion, garlic, leek, chive, and asafoetida) with category FIVE_PUNGENT. Write the summary and every reason in ${ANALYSIS_LANGUAGE[locale]}. Keep ingredient names as they appear on the label, and keep the category values in English as specified.`,
             },
             {
               type: 'file',

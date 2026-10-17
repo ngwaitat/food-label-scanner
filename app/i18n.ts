@@ -1,5 +1,14 @@
 export type Locale = 'en' | 'zh-Hant' | 'zh-Hans';
 
+export type Status =
+  | 'VEGAN'
+  | 'OVO_VEGETARIAN'
+  | 'LACTO_VEGETARIAN'
+  | 'LACTO_OVO_VEGETARIAN'
+  | 'PUNGENT_VEGETARIAN'
+  | 'NON_VEGETARIAN'
+  | 'UNKNOWN';
+
 export const DEFAULT_LOCALE: Locale = 'zh-Hant';
 
 export const LOCALE_COOKIE = 'foodscanner-locale';
@@ -30,7 +39,7 @@ export interface Strings {
   readImageError: string;
   genericError: string;
   language: string;
-  statusLabels: Record<'VEGAN' | 'VEGETARIAN' | 'NON_VEGETARIAN' | 'UNKNOWN', string>;
+  statusLabels: Record<Status, string>;
   categoryLabels: Record<string, string>;
 }
 
@@ -47,7 +56,10 @@ export const STRINGS: Record<Locale, Strings> = {
     language: 'Language',
     statusLabels: {
       VEGAN: 'Vegan',
-      VEGETARIAN: 'Vegetarian',
+      OVO_VEGETARIAN: 'Ovo-vegetarian',
+      LACTO_VEGETARIAN: 'Lacto-vegetarian',
+      LACTO_OVO_VEGETARIAN: 'Lacto-ovo vegetarian',
+      PUNGENT_VEGETARIAN: 'Vegan (五辛)',
       NON_VEGETARIAN: 'Non-vegetarian',
       UNKNOWN: 'Unknown',
     },
@@ -73,7 +85,10 @@ export const STRINGS: Record<Locale, Strings> = {
     language: '語言',
     statusLabels: {
       VEGAN: '純素',
-      VEGETARIAN: '蛋奶素',
+      OVO_VEGETARIAN: '蛋素',
+      LACTO_VEGETARIAN: '奶素',
+      LACTO_OVO_VEGETARIAN: '蛋奶素',
+      PUNGENT_VEGETARIAN: '植物五辛素',
       NON_VEGETARIAN: '非素食',
       UNKNOWN: '無法判斷',
     },
@@ -99,7 +114,10 @@ export const STRINGS: Record<Locale, Strings> = {
     language: '语言',
     statusLabels: {
       VEGAN: '纯素',
-      VEGETARIAN: '蛋奶素',
+      OVO_VEGETARIAN: '蛋素',
+      LACTO_VEGETARIAN: '奶素',
+      LACTO_OVO_VEGETARIAN: '蛋奶素',
+      PUNGENT_VEGETARIAN: '植物五辛素',
       NON_VEGETARIAN: '非素食',
       UNKNOWN: '无法判断',
     },
