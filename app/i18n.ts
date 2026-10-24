@@ -41,6 +41,7 @@ export interface Strings {
   previewAlt: string;
   readImageError: string;
   genericError: string;
+  regionBlocked: string;
   language: string;
   zoomHint: string;
   zoomIn: string;
@@ -66,6 +67,7 @@ export const STRINGS: Record<Locale, Strings> = {
     previewAlt: 'Label preview',
     readImageError: 'Could not read the image',
     genericError: 'Something went wrong',
+    regionBlocked: 'This service is currently only available in Hong Kong.',
     language: 'Language',
     zoomHint: 'View larger',
     zoomIn: 'Zoom in',
@@ -105,6 +107,7 @@ export const STRINGS: Record<Locale, Strings> = {
     previewAlt: '標籤預覽',
     readImageError: '無法讀取圖片',
     genericError: '發生錯誤，請再試一次',
+    regionBlocked: '本服務目前只供香港用戶使用。',
     language: '語言',
     zoomHint: '放大檢視',
     zoomIn: '放大',
@@ -144,6 +147,7 @@ export const STRINGS: Record<Locale, Strings> = {
     previewAlt: '标签预览',
     readImageError: '无法读取图片',
     genericError: '发生错误，请再试一次',
+    regionBlocked: '本服务目前只供香港用户使用。',
     language: '语言',
     zoomHint: '放大查看',
     zoomIn: '放大',

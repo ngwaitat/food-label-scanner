@@ -2,7 +2,8 @@ import { createDeepSeek } from '@ai-sdk/deepseek';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { cacheGet, cacheSet, hashKey } from '@/app/lib/cache';
-import { ANALYSIS_LANGUAGE, DEFAULT_LOCALE, isLocale, type Locale } from '@/app/i18n';
+import { evaluateGeo } from '@/app/lib/geo';
+import { ANALYSIS_LANGUAGE, DEFAULT_LOCALE, isLocale, STRINGS, type Locale } from '@/app/i18n';
 
 const deepseek = createDeepSeek({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -100,6 +101,11 @@ export async function POST(req: Request) {
 
     if (isLocale(body?.locale)) {
       locale = body.locale;
+    }
+
+    const geo = evaluateGeo(req);
+    if (!geo.allowed) {
+      return Response.json({ error: STRINGS[locale].regionBlocked }, { status: 403 });
     }
 
     const imageBase64 = typeof rawImage === 'string' ? rawImage : '';
