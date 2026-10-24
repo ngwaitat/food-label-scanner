@@ -38,6 +38,8 @@ export interface Strings {
   status: string;
   flagged: string;
   ingredients: string;
+  showIngredients: (count: number) => string;
+  hideIngredients: string;
   previewAlt: string;
   readImageError: string;
   genericError: string;
@@ -76,6 +78,8 @@ export const STRINGS: Record<Locale, Strings> = {
     status: 'Status:',
     flagged: 'Flagged Ingredients',
     ingredients: 'Ingredients',
+    showIngredients: (count) => `Show all ingredients (${count})`,
+    hideIngredients: 'Hide ingredients',
     previewAlt: 'Label preview',
     readImageError: 'Could not read the image',
     genericError: 'Something went wrong',
@@ -129,6 +133,8 @@ export const STRINGS: Record<Locale, Strings> = {
     status: '狀態：',
     flagged: '需要注意的成分',
     ingredients: '成分',
+    showIngredients: (count) => `顯示全部成分（${count}）`,
+    hideIngredients: '隱藏成分',
     previewAlt: '標籤預覽',
     readImageError: '無法讀取圖片',
     genericError: '發生錯誤，請再試一次',
@@ -181,6 +187,8 @@ export const STRINGS: Record<Locale, Strings> = {
     status: '状态：',
     flagged: '需要注意的成分',
     ingredients: '成分',
+    showIngredients: (count) => `显示全部成分（${count}）`,
+    hideIngredients: '隐藏成分',
     previewAlt: '标签预览',
     readImageError: '无法读取图片',
     genericError: '发生错误，请再试一次',

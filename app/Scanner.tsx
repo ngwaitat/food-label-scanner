@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import imageCompression from 'browser-image-compression';
-import { Check, Globe, Info, Loader2, Search, Share2 } from 'lucide-react';
+import { Check, ChevronDown, Globe, Info, Loader2, Search, Share2 } from 'lucide-react';
 import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale } from './i18n';
 import HistoryList from './HistoryList';
 import { buildShareCard } from './shareCard';
@@ -58,6 +58,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [showIngredients, setShowIngredients] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -134,6 +135,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
 
     setLoading(true);
     setResult(null);
+    setShowIngredients(false);
     setError(null);
     setShareMessage(null);
 
@@ -186,6 +188,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     setLocale(scan.locale);
     setPreview(scan.image);
     setResult(scan.result);
+    setShowIngredients(false);
     setError(null);
     setShareMessage(null);
     setMenuOpen(false);
@@ -382,26 +385,6 @@ export default function Scanner({ initialLocale }: ScannerProps) {
 
           <p className="text-sm text-gray-600">{result.summary}</p>
 
-          {result.ingredients && result.ingredients.length > 0 && (
-            <div className="space-y-1.5">
-              <h3 className="text-xs font-bold text-gray-500 uppercase">{t.ingredients}</h3>
-              <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
-                {result.ingredients.map((item, idx) => {
-                  const translation = item.translation?.trim() ?? '';
-                  const showTranslation = translation !== '' && translation !== item.name.trim();
-                  return (
-                    <li key={idx} className="px-3 py-2 text-xs text-gray-700">
-                      <span className="font-medium text-gray-900">{item.name}</span>
-                      {showTranslation && (
-                        <span className="block mt-0.5 text-gray-500">{translation}</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-
           {result.flaggedIngredients?.length > 0 && (
             <div className="space-y-1.5">
               <h3 className="text-xs font-bold text-gray-500 uppercase">{t.flagged}</h3>
@@ -428,6 +411,48 @@ export default function Scanner({ initialLocale }: ScannerProps) {
                   })}
                 </ul>
               </div>
+            </div>
+          )}
+
+          {result.ingredients && result.ingredients.length > 0 && (
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => setShowIngredients((value) => !value)}
+                aria-expanded={showIngredients}
+                aria-controls="scan-ingredients"
+                className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+              >
+                <span>
+                  {showIngredients
+                    ? t.hideIngredients
+                    : t.showIngredients(result.ingredients.length)}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 text-gray-400 transition-transform ${
+                    showIngredients ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+              {showIngredients && (
+                <ul
+                  id="scan-ingredients"
+                  className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white"
+                >
+                  {result.ingredients.map((item, idx) => {
+                    const translation = item.translation?.trim() ?? '';
+                    const showTranslation = translation !== '' && translation !== item.name.trim();
+                    return (
+                      <li key={idx} className="px-3 py-2 text-xs text-gray-700">
+                        <span className="font-medium text-gray-900">{item.name}</span>
+                        {showTranslation && (
+                          <span className="block mt-0.5 text-gray-500">{translation}</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           )}
 
