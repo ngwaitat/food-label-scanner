@@ -49,6 +49,11 @@ export interface Strings {
   zoomReset: string;
   close: string;
   info: string;
+  history: string;
+  historyNote: string;
+  clearHistory: string;
+  confirmClearHistory: string;
+  viewScan: string;
   followUs: string;
   statusLabels: Record<Status, string>;
   categoryLabels: Record<string, string>;
@@ -75,6 +80,11 @@ export const STRINGS: Record<Locale, Strings> = {
     zoomReset: 'Reset zoom',
     close: 'Close',
     info: 'Info',
+    history: 'Recent scans',
+    historyNote: 'Saved on this device',
+    clearHistory: 'Clear',
+    confirmClearHistory: 'Delete all saved scans?',
+    viewScan: 'View scan',
     followUs: 'Follow us',
     statusLabels: {
       VEGAN: 'Vegan',
@@ -115,6 +125,11 @@ export const STRINGS: Record<Locale, Strings> = {
     zoomReset: '重設縮放',
     close: '關閉',
     info: '資訊',
+    history: '最近掃描',
+    historyNote: '只儲存在此裝置',
+    clearHistory: '清除',
+    confirmClearHistory: '確定清除所有已儲存的掃描？',
+    viewScan: '查看掃描',
     followUs: '追蹤我們',
     statusLabels: {
       VEGAN: '純素',
@@ -155,6 +170,11 @@ export const STRINGS: Record<Locale, Strings> = {
     zoomReset: '重置缩放',
     close: '关闭',
     info: '信息',
+    history: '最近扫描',
+    historyNote: '只存储在此设备',
+    clearHistory: '清除',
+    confirmClearHistory: '确定清除所有已保存的扫描？',
+    viewScan: '查看扫描',
     followUs: '关注我们',
     statusLabels: {
       VEGAN: '纯素',

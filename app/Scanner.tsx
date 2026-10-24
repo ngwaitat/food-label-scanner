@@ -1,41 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import imageCompression from 'browser-image-compression';
 import { Check, Globe, Info, Loader2, Search } from 'lucide-react';
-import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale, type Status } from './i18n';
+import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale } from './i18n';
+import HistoryList from './HistoryList';
+import { STATUS_STYLES } from './statusStyles';
+import type { AnalysisResult, StoredScan } from './types';
+import { useScanHistory } from './useScanHistory';
 import ZoomModal from './ZoomModal';
 import InfoDialog from './InfoDialog';
-
-interface FlaggedIngredient {
-  name: string;
-  category: string;
-  reason: string;
-}
-
-interface IngredientItem {
-  name: string;
-  translation?: string;
-}
-
-interface AnalysisResult {
-  status: Status;
-  summary: string;
-  ingredients?: IngredientItem[];
-  flaggedIngredients: FlaggedIngredient[];
-  model?: string;
-  cached?: boolean;
-}
-
-const STATUS_STYLES: Record<Status, string> = {
-  VEGAN: 'bg-green-100 text-green-800',
-  OVO_VEGETARIAN: 'bg-yellow-100 text-yellow-800',
-  LACTO_VEGETARIAN: 'bg-yellow-100 text-yellow-800',
-  LACTO_OVO_VEGETARIAN: 'bg-yellow-100 text-yellow-800',
-  PUNGENT_VEGETARIAN: 'bg-yellow-100 text-yellow-800',
-  NON_VEGETARIAN: 'bg-red-100 text-red-800',
-  UNKNOWN: 'bg-gray-100 text-gray-800',
-};
 
 const CATEGORY_ORDER = ['MEAT', 'FISH_SEAFOOD', 'DAIRY', 'EGG', 'ADDITIVE', 'FIVE_PUNGENT', 'OTHER'];
 
@@ -52,6 +26,13 @@ function readFileAsDataURL(file: File, errorMessage: string): Promise<string> {
   });
 }
 
+function createScanId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function Scanner({ initialLocale }: ScannerProps) {
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const [loading, setLoading] = useState(false);
@@ -61,12 +42,25 @@ export default function Scanner({ initialLocale }: ScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [scrollRequest, setScrollRequest] = useState(0);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const {
+    items: history,
+    available: historyAvailable,
+    save: saveScan,
+    clear: clearHistory,
+  } = useScanHistory();
   const t = STRINGS[locale];
 
   useEffect(() => {
     document.documentElement.lang = locale;
     document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
   }, [locale]);
+
+  useEffect(() => {
+    if (scrollRequest === 0) return;
+    previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [scrollRequest]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target;
@@ -100,13 +94,40 @@ export default function Scanner({ initialLocale }: ScannerProps) {
         throw new Error(data?.error ?? t.genericError);
       }
 
-      setResult(data as AnalysisResult);
+      const analysis = data as AnalysisResult;
+      setResult(analysis);
+      void saveScan({
+        id: createScanId(),
+        createdAt: Date.now(),
+        image: base64Data,
+        locale,
+        result: analysis,
+      });
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : t.genericError);
     } finally {
       setLoading(false);
       input.value = '';
+    }
+  };
+
+  const handleOpenScan = (scan: StoredScan) => {
+    if (loading) return;
+
+    setLocale(scan.locale);
+    setPreview(scan.image);
+    setResult(scan.result);
+    setError(null);
+    setMenuOpen(false);
+    setInfoOpen(false);
+    setViewerOpen(false);
+    setScrollRequest((value) => value + 1);
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm(t.confirmClearHistory)) {
+      void clearHistory();
     }
   };
 
@@ -187,7 +208,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
 
       {/* Image Preview */}
       {preview && (
-        <div className="relative w-full h-48 rounded-lg overflow-hidden border bg-slate-100">
+        <div ref={previewRef} className="relative w-full h-48 rounded-lg overflow-hidden border bg-slate-100">
           <button
             type="button"
             onClick={() => setViewerOpen(true)}
@@ -262,6 +283,16 @@ export default function Scanner({ initialLocale }: ScannerProps) {
             </div>
           )}
         </div>
+      )}
+
+      {historyAvailable && (
+        <HistoryList
+          items={history}
+          locale={locale}
+          disabled={loading}
+          onOpen={handleOpenScan}
+          onClear={handleClearHistory}
+        />
       )}
 
       {/* Language Modal */}
