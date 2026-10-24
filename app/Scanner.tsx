@@ -383,14 +383,14 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           <p className="text-sm text-gray-600">{result.summary}</p>
 
           {result.ingredients && result.ingredients.length > 0 && (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <h3 className="text-xs font-bold text-gray-500 uppercase">{t.ingredients}</h3>
-              <ul className="space-y-1">
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
                 {result.ingredients.map((item, idx) => {
                   const translation = item.translation?.trim() ?? '';
                   const showTranslation = translation !== '' && translation !== item.name.trim();
                   return (
-                    <li key={idx} className="text-xs bg-white p-2 rounded border text-gray-700">
+                    <li key={idx} className="px-3 py-2 text-xs text-gray-700">
                       <span className="font-medium text-gray-900">{item.name}</span>
                       {showTranslation && (
                         <span className="block mt-0.5 text-gray-500">{translation}</span>
@@ -403,27 +403,31 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           )}
 
           {result.flaggedIngredients?.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               <h3 className="text-xs font-bold text-gray-500 uppercase">{t.flagged}</h3>
-              {CATEGORY_ORDER.map((cat) => {
-                const items = result.flaggedIngredients.filter((item) => item.category === cat);
-                if (items.length === 0) return null;
-                return (
-                  <div key={cat} className="space-y-1">
-                    <h4 className="text-xs font-semibold text-gray-700">
-                      {t.categoryLabels[cat] ?? cat}
-                    </h4>
-                    <ul className="space-y-1">
-                      {items.map((item, idx) => (
-                        <li key={idx} className="text-xs bg-white p-2 rounded border text-gray-700">
-                          <span className="font-bold text-gray-900">{item.name}</span>
-                          {locale === 'en' ? `: ${item.reason}` : `：${item.reason}`}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
+              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                <ul className="divide-y divide-gray-100">
+                  {CATEGORY_ORDER.map((cat) => {
+                    const items = result.flaggedIngredients.filter((item) => item.category === cat);
+                    if (items.length === 0) return null;
+                    return (
+                      <li key={cat}>
+                        <h4 className="bg-gray-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                          {t.categoryLabels[cat] ?? cat}
+                        </h4>
+                        <ul className="divide-y divide-gray-100">
+                          {items.map((item, idx) => (
+                            <li key={idx} className="px-3 py-2 text-xs leading-relaxed text-gray-700">
+                              <span className="font-semibold text-gray-900">{item.name}</span>
+                              {locale === 'en' ? `: ${item.reason}` : `：${item.reason}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </div>
           )}
 
