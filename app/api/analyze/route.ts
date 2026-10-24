@@ -20,7 +20,7 @@ const VISION_MODEL = process.env.DEEPSEEK_VISION_MODEL ?? 'deepseek-flash';
 const TEXT_MODEL = process.env.DEEPSEEK_TEXT_MODEL ?? VISION_MODEL;
 const OCR_MIN_CHARS = envNumber('OCR_MIN_CHARS', 40);
 const OCR_MIN_CONFIDENCE = envNumber('OCR_MIN_CONFIDENCE', 0.7);
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v4';
 
 const API_ERRORS: Record<Locale, {
   inputRequired: string;
@@ -59,7 +59,12 @@ const AnalysisSchema = z.object({
     'UNKNOWN',
   ]),
   summary: z.string().max(500),
-  ingredients: z.array(z.string().max(160)).max(100),
+  ingredients: z.array(
+    z.object({
+      name: z.string().max(160),
+      translation: z.string().max(160).optional(),
+    })
+  ).max(100),
   flaggedIngredients: z.array(
     z.object({
       name: z.string().max(160),
@@ -83,7 +88,7 @@ Choose exactly one status:
 - UNKNOWN: cannot determine.
 
 Rules:
-- List every ingredient you can read in "ingredients", in the order printed, keeping names exactly as printed.
+- List every ingredient you can read in "ingredients", in the order printed, with "name" exactly as printed.
 - Flag animal-derived ingredients and additives of concern using the matching category.
 - Flag 五辛 (scallion/onion, garlic, leek, chive, asafoetida) as FIVE_PUNGENT.
 - 五辛 are plant-based: never describe them as non-vegetarian, meat, or animal-derived.
@@ -91,6 +96,16 @@ Rules:
 - Use only the categories provided, and keep category values in English.
 - Do not invent anything that is not visible on the label, and never state that an ingredient is absent when it is listed.
 - Be concise: summary at most two sentences, each reason at most one short sentence.`;
+
+function scriptNote(locale: Locale): string {
+  if (locale === 'zh-Hans') {
+    return ' Printed names in Traditional Chinese are not in the selected script: convert them to Simplified Chinese in "translation".';
+  }
+  if (locale === 'zh-Hant') {
+    return ' Printed names in Simplified Chinese are not in the selected script: convert them to Traditional Chinese in "translation".';
+  }
+  return '';
+}
 
 export async function POST(req: Request) {
   let locale: Locale = DEFAULT_LOCALE;
@@ -152,7 +167,7 @@ export async function POST(req: Request) {
       { type: 'text' as const, text: INSTRUCTIONS },
       {
         type: 'text' as const,
-        text: `Write the summary and every reason in ${ANALYSIS_LANGUAGE[locale]}. Keep ingredient names as they appear on the label.`,
+        text: `Write the summary and every reason in ${ANALYSIS_LANGUAGE[locale]}. Keep each ingredient "name" exactly as it appears on the label. If a printed name is not already written in ${ANALYSIS_LANGUAGE[locale]}, add its translation in that language in the "translation" field; otherwise leave "translation" empty. Do not translate numbers, E-codes, or brand names.${scriptNote(locale)}`,
       },
       useText
         ? { type: 'text' as const, text: `Ingredient text from the label:\n${ocrText.slice(0, 6000)}` }

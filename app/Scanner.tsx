@@ -13,10 +13,15 @@ interface FlaggedIngredient {
   reason: string;
 }
 
+interface IngredientItem {
+  name: string;
+  translation?: string;
+}
+
 interface AnalysisResult {
   status: Status;
   summary: string;
-  ingredients?: string[];
+  ingredients?: IngredientItem[];
   flaggedIngredients: FlaggedIngredient[];
   model?: string;
   cached?: boolean;
@@ -216,11 +221,18 @@ export default function Scanner({ initialLocale }: ScannerProps) {
             <div className="space-y-1">
               <h3 className="text-xs font-bold text-gray-500 uppercase">{t.ingredients}</h3>
               <ul className="space-y-1">
-                {result.ingredients.map((name, idx) => (
-                  <li key={idx} className="text-xs bg-white p-2 rounded border text-gray-700">
-                    {name}
-                  </li>
-                ))}
+                {result.ingredients.map((item, idx) => {
+                  const translation = item.translation?.trim() ?? '';
+                  const showTranslation = translation !== '' && translation !== item.name.trim();
+                  return (
+                    <li key={idx} className="text-xs bg-white p-2 rounded border text-gray-700">
+                      <span className="font-medium text-gray-900">{item.name}</span>
+                      {showTranslation && (
+                        <span className="block mt-0.5 text-gray-500">{translation}</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
