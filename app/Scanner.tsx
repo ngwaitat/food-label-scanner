@@ -18,6 +18,8 @@ interface AnalysisResult {
   summary: string;
   ingredients?: string[];
   flaggedIngredients: FlaggedIngredient[];
+  model?: string;
+  cached?: boolean;
 }
 
 const STATUS_STYLES: Record<Status, string> = {
@@ -72,8 +74,9 @@ export default function Scanner({ initialLocale }: ScannerProps) {
 
     try {
       const compressedFile = await imageCompression(file, {
-        maxSizeMB: 0.5,
-        maxWidthOrHeight: 1200,
+        maxSizeMB: 0.4,
+        maxWidthOrHeight: 1024,
+        initialQuality: 0.8,
         useWebWorker: true,
       });
 
