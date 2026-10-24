@@ -54,6 +54,11 @@ export interface Strings {
   clearHistory: string;
   confirmClearHistory: string;
   viewScan: string;
+  share: string;
+  sharing: string;
+  shareFallback: string;
+  shareError: string;
+  shareVia: string;
   followUs: string;
   statusLabels: Record<Status, string>;
   categoryLabels: Record<string, string>;
@@ -85,6 +90,11 @@ export const STRINGS: Record<Locale, Strings> = {
     clearHistory: 'Clear',
     confirmClearHistory: 'Delete all saved scans?',
     viewScan: 'View scan',
+    share: 'Share',
+    sharing: 'Preparing…',
+    shareFallback: 'Share card downloaded and text copied',
+    shareError: 'Could not prepare the share card',
+    shareVia: 'via',
     followUs: 'Follow us',
     statusLabels: {
       VEGAN: 'Vegan',
@@ -130,6 +140,11 @@ export const STRINGS: Record<Locale, Strings> = {
     clearHistory: '清除',
     confirmClearHistory: '確定清除所有已儲存的掃描？',
     viewScan: '查看掃描',
+    share: '分享',
+    sharing: '正在準備…',
+    shareFallback: '分享圖已下載，文字已複製',
+    shareError: '無法建立分享圖',
+    shareVia: '來自',
     followUs: '追蹤我們',
     statusLabels: {
       VEGAN: '純素',
@@ -175,6 +190,11 @@ export const STRINGS: Record<Locale, Strings> = {
     clearHistory: '清除',
     confirmClearHistory: '确定清除所有已保存的扫描？',
     viewScan: '查看扫描',
+    share: '分享',
+    sharing: '正在准备…',
+    shareFallback: '分享图已下载，文字已复制',
+    shareError: '无法创建分享图',
+    shareVia: '来自',
     followUs: '关注我们',
     statusLabels: {
       VEGAN: '纯素',

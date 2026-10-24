@@ -2,9 +2,10 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import imageCompression from 'browser-image-compression';
-import { Check, Globe, Info, Loader2, Search } from 'lucide-react';
+import { Check, Globe, Info, Loader2, Search, Share2 } from 'lucide-react';
 import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale } from './i18n';
 import HistoryList from './HistoryList';
+import { buildShareCard } from './shareCard';
 import { STATUS_STYLES } from './statusStyles';
 import type { AnalysisResult, StoredScan } from './types';
 import { useScanHistory } from './useScanHistory';
@@ -33,6 +34,25 @@ function createScanId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function canShareFiles(file: File): boolean {
+  try {
+    return typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+  } catch {
+    return false;
+  }
+}
+
 export default function Scanner({ initialLocale }: ScannerProps) {
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const [loading, setLoading] = useState(false);
@@ -43,6 +63,8 @@ export default function Scanner({ initialLocale }: ScannerProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [scrollRequest, setScrollRequest] = useState(0);
+  const [sharing, setSharing] = useState(false);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const {
     items: history,
@@ -62,6 +84,12 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [scrollRequest]);
 
+  useEffect(() => {
+    if (!shareMessage) return;
+    const timer = window.setTimeout(() => setShareMessage(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [shareMessage]);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target;
     const file = input.files?.[0];
@@ -70,6 +98,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     setLoading(true);
     setResult(null);
     setError(null);
+    setShareMessage(null);
 
     try {
       const compressedFile = await imageCompression(file, {
@@ -119,6 +148,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     setPreview(scan.image);
     setResult(scan.result);
     setError(null);
+    setShareMessage(null);
     setMenuOpen(false);
     setInfoOpen(false);
     setViewerOpen(false);
@@ -128,6 +158,62 @@ export default function Scanner({ initialLocale }: ScannerProps) {
   const handleClearHistory = () => {
     if (window.confirm(t.confirmClearHistory)) {
       void clearHistory();
+    }
+  };
+
+  const handleShare = async () => {
+    if (!result || !preview || sharing) return;
+
+    setSharing(true);
+    setShareMessage(null);
+
+    let blob: Blob | null = null;
+    const text = `${t.title}\n${t.statusLabels[result.status]} — ${result.summary}\n\n${window.location.origin}`;
+
+    try {
+      blob = await buildShareCard({
+        image: preview,
+        logo: '/logo.jpg',
+        appTitle: t.title,
+        status: result.status,
+        statusLabel: t.statusLabels[result.status],
+        summary: result.summary,
+        flaggedHeading: t.flagged,
+        flagged: result.flaggedIngredients.slice(0, 3).map((item) => ({
+          name: item.name,
+          categoryLabel: t.categoryLabels[item.category] ?? item.category,
+        })),
+        origin: window.location.origin,
+        viaLabel: t.shareVia,
+        locale,
+      });
+
+      const file = new File([blob], 'food-label.png', { type: 'image/png' });
+
+      if (typeof navigator.share === 'function' && canShareFiles(file)) {
+        await navigator.share({ files: [file], title: t.title, text });
+        return;
+      }
+
+      downloadBlob(blob, 'food-label.png');
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        console.error('[share] could not copy text', error);
+      }
+      setShareMessage(t.shareFallback);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+
+      console.error('[share] failed', error);
+      if (blob) {
+        downloadBlob(blob, 'food-label.png');
+        setShareMessage(t.shareFallback);
+      } else {
+        setShareMessage(t.shareError);
+      }
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -282,6 +368,21 @@ export default function Scanner({ initialLocale }: ScannerProps) {
               })}
             </div>
           )}
+
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={sharing || !preview}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60"
+            >
+              <Share2 className="h-4 w-4" />
+              {sharing ? t.sharing : t.share}
+            </button>
+            {shareMessage && (
+              <p className="text-center text-xs text-gray-500">{shareMessage}</p>
+            )}
+          </div>
         </div>
       )}
 
