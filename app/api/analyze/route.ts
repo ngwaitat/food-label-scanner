@@ -123,22 +123,19 @@ function scriptNote(locale: Locale): string {
 function jsonResponse(
   body: Record<string, unknown>,
   status: number,
-  quota: QuotaSnapshot | null,
-  setCookie?: string
+  quota: QuotaSnapshot | null
 ): Response {
   const headers: Record<string, string> = quota
     ? quotaHeaders(quota)
     : { 'Cache-Control': 'no-store' };
 
-  const response = Response.json(body, { status, headers });
-  if (setCookie) response.headers.append('Set-Cookie', setCookie);
-  return response;
+  return Response.json(body, { status, headers });
 }
 
 export async function POST(req: Request) {
   let locale: Locale = DEFAULT_LOCALE;
   let reservation: QuotaReservation | null = null;
-  const { userId, setCookie } = resolveIdentity(req);
+  const { userId } = resolveIdentity(req);
 
   try {
     const body = await req.json().catch(() => null);
@@ -183,8 +180,7 @@ export async function POST(req: Request) {
       const response = jsonResponse(
         { error: API_ERRORS[locale].dailyLimit, quota: reservation.quota },
         429,
-        reservation.quota,
-        setCookie
+        reservation.quota
       );
       const retryAfter = Math.max(
         1,
@@ -209,8 +205,7 @@ export async function POST(req: Request) {
       return jsonResponse(
         { ...cached, model: modelName, cached: true, quota: reservation.quota },
         200,
-        reservation.quota,
-        setCookie
+        reservation.quota
       );
     }
 
@@ -258,8 +253,7 @@ export async function POST(req: Request) {
     return jsonResponse(
       { ...output, model: modelName, cached: false, quota: reservation.quota, ...debugUsage },
       200,
-      reservation.quota,
-      setCookie
+      reservation.quota
     );
   } catch (error) {
     console.error(error);
@@ -278,6 +272,6 @@ export async function POST(req: Request) {
       error instanceof Error && error.message.includes('API key')
         ? API_ERRORS[locale].invalidKey
         : API_ERRORS[locale].failed;
-    return jsonResponse({ error: message, ...(quota ? { quota } : {}) }, 500, quota, setCookie);
+    return jsonResponse({ error: message, ...(quota ? { quota } : {}) }, 500, quota);
   }
 }

@@ -1,16 +1,14 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import type { QuotaSnapshot } from '../types';
 import { redisCommand, redisEnabled } from './redis';
-
-export const QUOTA_COOKIE = 'foodscanner-user';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const HONG_KONG_OFFSET_MS = 8 * 60 * 60 * 1000;
 const KEY_PREFIX = 'quota:v1';
-const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 const MEMORY_MAX_ENTRIES = 5000;
-const USER_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
+const IPV4_WITH_PORT = /^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/;
+const UNKNOWN_IP = 'unknown';
 
 interface MemoryUsage {
   used: number;
@@ -28,7 +26,7 @@ export function dailyLimit(): number {
   return Number.isInteger(value) && value > 0 ? value : 10;
 }
 
-function signingSecret(): string {
+function quotaSecret(): string {
   const configured = process.env.QUOTA_COOKIE_SECRET;
   if (configured && configured.trim() !== '') return configured;
 
@@ -39,68 +37,47 @@ function signingSecret(): string {
   return 'foodscanner-development-quota-secret';
 }
 
-function sign(userId: string): string {
-  return createHmac('sha256', signingSecret()).update(userId).digest('base64url');
-}
+function normalizeIp(value: string): string {
+  let ip = value.trim();
 
-function verifyIdentity(value: string): string | null {
-  const separator = value.lastIndexOf('.');
-  if (separator <= 0) return null;
-
-  const userId = value.slice(0, separator);
-  if (!USER_ID_PATTERN.test(userId)) return null;
-
-  const provided = Buffer.from(value.slice(separator + 1));
-  const expected = Buffer.from(sign(userId));
-  if (provided.length !== expected.length) return null;
-
-  return timingSafeEqual(provided, expected) ? userId : null;
-}
-
-function readCookie(request: Request, name: string): string | null {
-  const header = request.headers.get('cookie');
-  if (!header) return null;
-
-  for (const part of header.split(';')) {
-    const separator = part.indexOf('=');
-    if (separator < 0) continue;
-    if (part.slice(0, separator).trim() !== name) continue;
-
-    try {
-      return decodeURIComponent(part.slice(separator + 1).trim());
-    } catch {
-      return null;
-    }
+  if (ip.startsWith('[') && ip.includes(']')) {
+    ip = ip.slice(1, ip.indexOf(']'));
+  } else {
+    const ipv4 = IPV4_WITH_PORT.exec(ip);
+    if (ipv4) ip = ipv4[1];
   }
 
-  return null;
+  if (ip.toLowerCase().startsWith('::ffff:')) ip = ip.slice(7);
+  return ip.toLowerCase();
 }
 
-export function identityCookie(userId: string): string {
-  const parts = [
-    `${QUOTA_COOKIE}=${userId}.${sign(userId)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${COOKIE_MAX_AGE_SECONDS}`,
-  ];
-  if (process.env.NODE_ENV === 'production') parts.push('Secure');
-  return parts.join('; ');
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const first = forwarded.split(',')[0]?.trim();
+    if (first) return normalizeIp(first);
+  }
+
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  if (realIp) return normalizeIp(realIp);
+
+  const cloudflareIp = request.headers.get('cf-connecting-ip')?.trim();
+  if (cloudflareIp) return normalizeIp(cloudflareIp);
+
+  return UNKNOWN_IP;
 }
 
 export interface Identity {
   userId: string;
-  setCookie?: string;
 }
 
 export function resolveIdentity(request: Request): Identity {
-  const raw = readCookie(request, QUOTA_COOKIE);
-  const userId = raw ? verifyIdentity(raw) : null;
+  const ip = clientIp(request);
+  const userId = createHmac('sha256', quotaSecret())
+    .update(`ip:${ip}`)
+    .digest('base64url');
 
-  if (userId) return { userId };
-
-  const created = randomUUID();
-  return { userId: created, setCookie: identityCookie(created) };
+  return { userId };
 }
 
 interface DayInfo {
