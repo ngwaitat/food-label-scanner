@@ -4,3 +4,7 @@ out
 .env*.local
 *.tsbuildinfo
 next-env.d.ts
+
+bench/results
+bench/samples
+bench/samples-1024
