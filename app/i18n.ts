@@ -53,6 +53,8 @@ export interface Strings {
   historyNote: string;
   clearHistory: string;
   confirmClearHistory: string;
+  quotaRemaining: (remaining: number, limit: number) => string;
+  quotaExhausted: (limit: number) => string;
   viewScan: string;
   share: string;
   sharing: string;
@@ -89,6 +91,9 @@ export const STRINGS: Record<Locale, Strings> = {
     historyNote: 'Saved on this device',
     clearHistory: 'Clear',
     confirmClearHistory: 'Delete all saved scans?',
+    quotaRemaining: (remaining, limit) => `${remaining} of ${limit} scans left today`,
+    quotaExhausted: (limit) =>
+      `You have used all ${limit} scans for today. It resets after midnight.`,
     viewScan: 'View scan',
     share: 'Share',
     sharing: 'Preparing…',
@@ -139,6 +144,8 @@ export const STRINGS: Record<Locale, Strings> = {
     historyNote: '只儲存在此裝置',
     clearHistory: '清除',
     confirmClearHistory: '確定清除所有已儲存的掃描？',
+    quotaRemaining: (remaining, limit) => `今日尚餘 ${remaining} / ${limit} 次掃描`,
+    quotaExhausted: (limit) => `今日 ${limit} 次掃描額度已用完，午夜後重置。`,
     viewScan: '查看掃描',
     share: '分享',
     sharing: '正在準備…',
@@ -189,6 +196,8 @@ export const STRINGS: Record<Locale, Strings> = {
     historyNote: '只存储在此设备',
     clearHistory: '清除',
     confirmClearHistory: '确定清除所有已保存的扫描？',
+    quotaRemaining: (remaining, limit) => `今日剩余 ${remaining} / ${limit} 次扫描`,
+    quotaExhausted: (limit) => `今日 ${limit} 次扫描额度已用完，午夜后重置。`,
     viewScan: '查看扫描',
     share: '分享',
     sharing: '正在准备…',

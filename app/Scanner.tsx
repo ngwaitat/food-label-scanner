@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import imageCompression from 'browser-image-compression';
 import { Check, Globe, Info, Loader2, Search, Share2 } from 'lucide-react';
 import { LOCALE_COOKIE, LOCALE_OPTIONS, STRINGS, type Locale } from './i18n';
 import HistoryList from './HistoryList';
 import { buildShareCard } from './shareCard';
 import { STATUS_STYLES } from './statusStyles';
-import type { AnalysisResult, StoredScan } from './types';
+import type { AnalyzeResponse, AnalysisResult, QuotaSnapshot, StoredScan } from './types';
 import { useScanHistory } from './useScanHistory';
 import ZoomModal from './ZoomModal';
 import InfoDialog from './InfoDialog';
@@ -65,6 +65,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
   const [scrollRequest, setScrollRequest] = useState(0);
   const [sharing, setSharing] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const [quota, setQuota] = useState<QuotaSnapshot | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const {
     items: history,
@@ -73,6 +74,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     clear: clearHistory,
   } = useScanHistory();
   const t = STRINGS[locale];
+  const exhausted = quota?.remaining === 0;
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -90,10 +92,45 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     return () => window.clearTimeout(timer);
   }, [shareMessage]);
 
+  const refreshQuota = useCallback(async () => {
+    try {
+      const res = await fetch('/api/quota', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = (await res.json()) as QuotaSnapshot;
+      setQuota(data);
+    } catch (error) {
+      console.error('[quota] could not load daily usage', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshQuota();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void refreshQuota();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [refreshQuota]);
+
+  useEffect(() => {
+    if (!quota) return;
+    const delay = quota.resetsAt - Date.now();
+    if (delay <= 0) return;
+
+    const timer = window.setTimeout(() => void refreshQuota(), delay + 1000);
+    return () => window.clearTimeout(timer);
+  }, [quota, refreshQuota]);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target;
     const file = input.files?.[0];
     if (!file) return;
+    if (quota && quota.remaining <= 0) {
+      input.value = '';
+      return;
+    }
 
     setLoading(true);
     setResult(null);
@@ -117,7 +154,9 @@ export default function Scanner({ initialLocale }: ScannerProps) {
         body: JSON.stringify({ imageBase64: base64Data, locale }),
       });
 
-      const data = await res.json().catch(() => null);
+      const data = (await res.json().catch(() => null)) as AnalyzeResponse | null;
+
+      if (data?.quota) setQuota(data.quota);
 
       if (!res.ok) {
         throw new Error(data?.error ?? t.genericError);
@@ -254,7 +293,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           onChange={handleImageUpload}
           className="hidden"
           id="camera-input"
-          disabled={loading}
+          disabled={loading || exhausted}
         />
         <input
           type="file"
@@ -262,7 +301,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           onChange={handleImageUpload}
           className="hidden"
           id="gallery-input"
-          disabled={loading}
+          disabled={loading || exhausted}
         />
         {loading ? (
           <div className="flex items-center gap-2 text-emerald-700 font-medium">
@@ -273,19 +312,38 @@ export default function Scanner({ initialLocale }: ScannerProps) {
           <div className="flex flex-col sm:flex-row gap-3">
             <label
               htmlFor="camera-input"
-              className="px-6 py-3 rounded-lg font-medium text-white text-center bg-emerald-600 cursor-pointer hover:bg-emerald-700 transition"
+              aria-disabled={exhausted}
+              className={`px-6 py-3 rounded-lg font-medium text-white text-center bg-emerald-600 transition ${
+                exhausted ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-emerald-700'
+              }`}
             >
               {t.snap}
             </label>
             <label
               htmlFor="gallery-input"
-              className="px-6 py-3 rounded-lg font-medium text-white text-center bg-emerald-600 cursor-pointer hover:bg-emerald-700 transition"
+              aria-disabled={exhausted}
+              className={`px-6 py-3 rounded-lg font-medium text-white text-center bg-emerald-600 transition ${
+                exhausted ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-emerald-700'
+              }`}
             >
               {t.uploadPhoto}
             </label>
           </div>
         )}
       </div>
+
+      {quota && (
+        <p
+          role="status"
+          className={`rounded-lg border px-3 py-2 text-center text-xs ${
+            exhausted
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+          }`}
+        >
+          {exhausted ? t.quotaExhausted(quota.limit) : t.quotaRemaining(quota.remaining, quota.limit)}
+        </p>
+      )}
 
       {/* Error */}
       {error && (

@@ -27,3 +27,15 @@ export interface StoredScan {
   locale: Locale;
   result: AnalysisResult;
 }
+
+export interface QuotaSnapshot {
+  limit: number;
+  used: number;
+  remaining: number;
+  resetsAt: number;
+}
+
+export interface AnalyzeResponse extends AnalysisResult {
+  quota?: QuotaSnapshot;
+  error?: string;
+}

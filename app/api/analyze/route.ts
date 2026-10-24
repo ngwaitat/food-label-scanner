@@ -3,7 +3,16 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { cacheGet, cacheSet, hashKey } from '@/app/lib/cache';
 import { evaluateGeo } from '@/app/lib/geo';
+import {
+  consumeQuota,
+  getQuota,
+  quotaHeaders,
+  refundQuota,
+  resolveIdentity,
+  type QuotaReservation,
+} from '@/app/lib/quota';
 import { ANALYSIS_LANGUAGE, DEFAULT_LOCALE, isLocale, STRINGS, type Locale } from '@/app/i18n';
+import type { QuotaSnapshot } from '@/app/types';
 
 const deepseek = createDeepSeek({
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -27,24 +36,28 @@ const API_ERRORS: Record<Locale, {
   missingKey: string;
   invalidKey: string;
   failed: string;
+  dailyLimit: string;
 }> = {
   en: {
     inputRequired: 'Image or ingredient text is required',
     missingKey: 'DEEPSEEK_API_KEY is not configured',
     invalidKey: 'DEEPSEEK_API_KEY is invalid or missing',
     failed: 'Failed to analyze label',
+    dailyLimit: 'You have reached today’s scan limit. Please try again after midnight.',
   },
   'zh-Hant': {
     inputRequired: '請提供圖片或成分文字',
     missingKey: '未設定 DEEPSEEK_API_KEY',
     invalidKey: 'DEEPSEEK_API_KEY 無效或未設定',
     failed: '無法分析標籤',
+    dailyLimit: '已達到今日掃描上限，請於午夜後再試。',
   },
   'zh-Hans': {
     inputRequired: '请提供图片或成分文字',
     missingKey: '未设置 DEEPSEEK_API_KEY',
     invalidKey: 'DEEPSEEK_API_KEY 无效或未设置',
     failed: '无法分析标签',
+    dailyLimit: '已达到今日扫描上限，请于午夜后再试。',
   },
 };
 
@@ -107,8 +120,25 @@ function scriptNote(locale: Locale): string {
   return '';
 }
 
+function jsonResponse(
+  body: Record<string, unknown>,
+  status: number,
+  quota: QuotaSnapshot | null,
+  setCookie?: string
+): Response {
+  const headers: Record<string, string> = quota
+    ? quotaHeaders(quota)
+    : { 'Cache-Control': 'no-store' };
+
+  const response = Response.json(body, { status, headers });
+  if (setCookie) response.headers.append('Set-Cookie', setCookie);
+  return response;
+}
+
 export async function POST(req: Request) {
   let locale: Locale = DEFAULT_LOCALE;
+  let reservation: QuotaReservation | null = null;
+  const { userId, setCookie } = resolveIdentity(req);
 
   try {
     const body = await req.json().catch(() => null);
@@ -148,6 +178,22 @@ export async function POST(req: Request) {
       return Response.json({ error: API_ERRORS[locale].missingKey }, { status: 500 });
     }
 
+    reservation = await consumeQuota(userId);
+    if (!reservation.allowed) {
+      const response = jsonResponse(
+        { error: API_ERRORS[locale].dailyLimit, quota: reservation.quota },
+        429,
+        reservation.quota,
+        setCookie
+      );
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((reservation.quota.resetsAt - Date.now()) / 1000)
+      );
+      response.headers.set('Retry-After', String(retryAfter));
+      return response;
+    }
+
     const mediaType = /^data:(image\/[\w.+-]+);base64,/.exec(imageBase64)?.[1] ?? 'image/jpeg';
     const modelName = useText ? TEXT_MODEL : VISION_MODEL;
 
@@ -160,7 +206,12 @@ export async function POST(req: Request) {
       console.log(
         `[analyze] cache hit (${useText ? 'text' : 'vision'}, ${locale})`
       );
-      return Response.json({ ...cached, model: modelName, cached: true });
+      return jsonResponse(
+        { ...cached, model: modelName, cached: true, quota: reservation.quota },
+        200,
+        reservation.quota,
+        setCookie
+      );
     }
 
     const content = [
@@ -204,13 +255,29 @@ export async function POST(req: Request) {
           }
         : {};
 
-    return Response.json({ ...output, model: modelName, cached: false, ...debugUsage });
+    return jsonResponse(
+      { ...output, model: modelName, cached: false, quota: reservation.quota, ...debugUsage },
+      200,
+      reservation.quota,
+      setCookie
+    );
   } catch (error) {
     console.error(error);
+
+    let quota: QuotaSnapshot | null = reservation?.quota ?? null;
+    if (reservation?.allowed) {
+      try {
+        await refundQuota(userId, reservation.dayKey);
+        quota = await getQuota(userId);
+      } catch (refundError) {
+        console.error('[analyze] could not refund quota', refundError);
+      }
+    }
+
     const message =
       error instanceof Error && error.message.includes('API key')
         ? API_ERRORS[locale].invalidKey
         : API_ERRORS[locale].failed;
-    return Response.json({ error: message }, { status: 500 });
+    return jsonResponse({ error: message, ...(quota ? { quota } : {}) }, 500, quota, setCookie);
   }
 }

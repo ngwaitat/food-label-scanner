@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { redisCommand } from './redis';
 
 const TTL_SECONDS = 60 * 60 * 24 * 30;
 const MAX_MEMORY_ENTRIES = 200;
@@ -9,10 +10,6 @@ interface MemoryEntry {
 }
 
 const memory = new Map<string, MemoryEntry>();
-
-const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/+$/, '');
-const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-const redisEnabled = Boolean(upstashUrl && upstashToken);
 
 function readMemory(key: string): string | null {
   const entry = memory.get(key);
@@ -33,30 +30,6 @@ function writeMemory(key: string, value: string): void {
     const oldest = memory.keys().next().value;
     if (oldest === undefined) break;
     memory.delete(oldest);
-  }
-}
-
-async function redisCommand(command: (string | number)[]): Promise<unknown> {
-  if (!redisEnabled) return null;
-  try {
-    const res = await fetch(upstashUrl as string, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${upstashToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(command),
-      cache: 'no-store',
-    });
-    if (!res.ok) {
-      console.error(`[cache] redis responded ${res.status}`);
-      return null;
-    }
-    const data = (await res.json()) as { result?: unknown };
-    return data.result ?? null;
-  } catch (error) {
-    console.error('[cache] redis request failed', error);
-    return null;
   }
 }
 
