@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { QuotaSnapshot } from '../types';
 import { redisCommand, redisEnabled } from './redis';
 
@@ -9,6 +9,9 @@ const KEY_PREFIX = 'quota:v1';
 const MEMORY_MAX_ENTRIES = 5000;
 const IPV4_WITH_PORT = /^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/;
 const UNKNOWN_IP = 'unknown';
+const VISITOR_COOKIE = 'fs_quota_id';
+const VISITOR_COOKIE_MAX_AGE = 365 * DAY_MS / 1000;
+const VISITOR_ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 
 interface MemoryUsage {
   used: number;
@@ -69,15 +72,75 @@ function clientIp(request: Request): string {
 
 export interface Identity {
   userId: string;
+  /** Set-Cookie value to send when the visitor has no signed quota cookie yet. */
+  setCookie?: string;
 }
 
+function signVisitorId(id: string): string {
+  return createHmac('sha256', quotaSecret()).update(`visitor:${id}`).digest('base64url');
+}
+
+function readCookie(request: Request, name: string): string | null {
+  const header = request.headers.get('cookie');
+  if (!header) return null;
+
+  for (const part of header.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator === -1) continue;
+    if (part.slice(0, separator).trim() !== name) continue;
+    return part.slice(separator + 1).trim();
+  }
+
+  return null;
+}
+
+function verifiedVisitorId(raw: string | null): string | null {
+  if (!raw) return null;
+
+  const separator = raw.lastIndexOf('.');
+  if (separator <= 0) return null;
+
+  const id = raw.slice(0, separator);
+  if (!VISITOR_ID_PATTERN.test(id)) return null;
+
+  const provided = Buffer.from(raw.slice(separator + 1));
+  const expected = Buffer.from(signVisitorId(id));
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+    return null;
+  }
+
+  return id;
+}
+
+// Quota is tracked per browser cookie rather than per IP: mobile carriers rotate
+// IPv4/IPv6 addresses and CGNAT shares one address between many users, so an IP
+// identity both resets quotas too easily and pools unrelated users together.
+// A signed cookie survives IP changes and keeps the visitor id tamper-proof.
 export function resolveIdentity(request: Request): Identity {
-  const ip = clientIp(request);
-  const userId = createHmac('sha256', quotaSecret())
-    .update(`ip:${ip}`)
+  const visitorId = verifiedVisitorId(readCookie(request, VISITOR_COOKIE));
+  if (visitorId) {
+    return {
+      userId: createHmac('sha256', quotaSecret()).update(`visitor:${visitorId}`).digest('base64url'),
+    };
+  }
+
+  // Requests without the cookie fall back to the IP identity so that clients
+  // which drop cookies still hit a limit instead of getting a fresh quota each time.
+  const fallbackId = createHmac('sha256', quotaSecret())
+    .update(`ip:${clientIp(request)}`)
     .digest('base64url');
 
-  return { userId };
+  const id = randomBytes(16).toString('base64url');
+  const cookie = [
+    `${VISITOR_COOKIE}=${id}.${signVisitorId(id)}`,
+    'Path=/',
+    `Max-Age=${VISITOR_COOKIE_MAX_AGE}`,
+    'HttpOnly',
+    'SameSite=Lax',
+  ];
+  if (process.env.NODE_ENV === 'production') cookie.push('Secure');
+
+  return { userId: fallbackId, setCookie: cookie.join('; ') };
 }
 
 interface DayInfo {

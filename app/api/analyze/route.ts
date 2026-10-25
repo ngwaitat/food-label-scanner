@@ -133,9 +133,17 @@ function jsonResponse(
 }
 
 export async function POST(req: Request) {
+  const identity = resolveIdentity(req);
+  const response = await handlePost(req, identity.userId);
+
+  if (identity.setCookie) response.headers.append('Set-Cookie', identity.setCookie);
+
+  return response;
+}
+
+async function handlePost(req: Request, userId: string): Promise<Response> {
   let locale: Locale = DEFAULT_LOCALE;
   let reservation: QuotaReservation | null = null;
-  const { userId } = resolveIdentity(req);
 
   try {
     const body = await req.json().catch(() => null);
