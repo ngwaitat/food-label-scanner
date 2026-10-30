@@ -1,6 +1,6 @@
 import { createDeepSeek } from '@ai-sdk/deepseek';
 import { generateText, NoObjectGeneratedError, Output, type LanguageModelUsage } from 'ai';
-import { AnalysisSchema, parseAnalysisText, sanitizeAnalysis, type AnalysisResult } from '@/app/lib/analysis';
+import { AnalysisSchema, parseAnalysisText, sanitizeAnalysis, summarizeStatus, type AnalysisResult } from '@/app/lib/analysis';
 import { cacheGet, cacheSet, hashKey } from '@/app/lib/cache';
 import { evaluateGeo } from '@/app/lib/geo';
 import { normalizeImage } from '@/app/lib/orientation';
@@ -31,7 +31,7 @@ const TEXT_MODEL = process.env.DEEPSEEK_TEXT_MODEL ?? VISION_MODEL;
 const OCR_MIN_CHARS = envNumber('OCR_MIN_CHARS', 40);
 const OCR_MIN_CONFIDENCE = envNumber('OCR_MIN_CONFIDENCE', 0.7);
 const MAX_OUTPUT_TOKENS = envNumber('ANALYZE_MAX_OUTPUT_TOKENS', 2048);
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 
 const UNREADABLE: Record<Locale, string> = {
   en: 'The ingredient list could not be read reliably. Try a closer, well-lit photo of the ingredients.',
@@ -296,6 +296,24 @@ async function handlePost(req: Request, userId: string): Promise<Response> {
     const output = sanitizeAnalysis(analysis.output, locale);
     const usage = analysis.usage;
     const recovered = analysis.recovered;
+
+    // Keep the summary consistent with the corrected status and flags, e.g. do
+    // not keep saying 五辛 after the 薑 flag was removed.
+    const signature = (flags: AnalysisResult['flaggedIngredients']) =>
+      flags.map((flag) => `${flag.category}:${flag.name}`).join('|');
+    const corrected =
+      analysis.output.status !== output.status ||
+      signature(analysis.output.flaggedIngredients) !== signature(output.flaggedIngredients) ||
+      analysis.output.ingredients.length !== output.ingredients.length;
+
+    if (corrected) {
+      output.summary = summarizeStatus(output.status, locale);
+      console.log('[analyze] summary corrected', {
+        from: analysis.output.status,
+        to: output.status,
+      });
+    }
+
 
     // A cached UNKNOWN would keep a blurry photo from ever being retried.
     if (output.status !== 'UNKNOWN') await cacheSet(cacheKey, output);

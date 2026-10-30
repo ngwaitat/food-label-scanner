@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Locale } from '../i18n';
+import type { Locale, Status } from '../i18n';
 
 export const AnalysisSchema = z.object({
   status: z.enum([
@@ -143,9 +143,44 @@ const FLAG_REASONS: Record<Locale, Record<'DAIRY' | 'EGG' | 'MEAT' | 'FISH_SEAFO
   },
 };
 
+// Used when post-processing overrides the model, so the summary cannot keep
+// claiming 五辛 or an animal ingredient that was just removed.
+const SUMMARY_BY_STATUS: Record<Locale, Record<Status, string>> = {
+  en: {
+    VEGAN: 'The ingredient list has no meat, fish, seafood, dairy, egg or 五辛, so the product is vegan.',
+    OVO_VEGETARIAN: 'The ingredient list has egg but no dairy or 五辛, so the product is ovo-vegetarian.',
+    LACTO_VEGETARIAN: 'The ingredient list has dairy but no egg or 五辛, so the product is lacto-vegetarian.',
+    LACTO_OVO_VEGETARIAN: 'The ingredient list has dairy and egg but no 五辛, so the product is lacto-ovo vegetarian.',
+    PUNGENT_VEGETARIAN: 'The ingredient list contains 五辛, so the product is vegetarian with 五辛.',
+    NON_VEGETARIAN: 'The ingredient list contains meat, fish or seafood, so the product is not vegetarian.',
+    UNKNOWN: 'The ingredient list could not be read reliably.',
+  },
+  'zh-Hant': {
+    VEGAN: '配料表未見肉、魚、海鮮、奶、蛋或五辛，屬純素。',
+    OVO_VEGETARIAN: '配料表含蛋但無奶或五辛，屬蛋素。',
+    LACTO_VEGETARIAN: '配料表含奶類但無蛋或五辛，屬奶素。',
+    LACTO_OVO_VEGETARIAN: '配料表含奶類及蛋但無五辛，屬蛋奶素。',
+    PUNGENT_VEGETARIAN: '配料表含五辛，屬植物五辛素。',
+    NON_VEGETARIAN: '配料表含肉類、魚或海鮮，屬非素食。',
+    UNKNOWN: '未能可靠讀取成分表。',
+  },
+  'zh-Hans': {
+    VEGAN: '配料表未见肉、鱼、海鲜、奶、蛋或五辛，属纯素。',
+    OVO_VEGETARIAN: '配料表含蛋但无奶或五辛，属蛋素。',
+    LACTO_VEGETARIAN: '配料表含奶类但无蛋或五辛，属奶素。',
+    LACTO_OVO_VEGETARIAN: '配料表含奶类及蛋但无五辛，属蛋奶素。',
+    PUNGENT_VEGETARIAN: '配料表含五辛，属植物五辛素。',
+    NON_VEGETARIAN: '配料表含肉类、鱼或海鲜，属非素食。',
+    UNKNOWN: '未能可靠读取成分表。',
+  },
+};
+
+export function summarizeStatus(status: Status, locale: Locale): string {
+  return SUMMARY_BY_STATUS[locale][status];
+}
+
 function isMistakenPungent(flag: FlaggedIngredient): boolean {
-  if (flag.category !== 'FIVE_PUNGENT') return false;
-  const name = normalizeIngredient(flag.name);
+  if (flag.category !== 'FIVE_PUNGENT') return false;  const name = normalizeIngredient(flag.name);
   return NOT_PUNGENT.some((term) => name.includes(normalizeIngredient(term)));
 }
 
