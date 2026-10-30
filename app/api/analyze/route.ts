@@ -31,7 +31,7 @@ const TEXT_MODEL = process.env.DEEPSEEK_TEXT_MODEL ?? VISION_MODEL;
 const OCR_MIN_CHARS = envNumber('OCR_MIN_CHARS', 40);
 const OCR_MIN_CONFIDENCE = envNumber('OCR_MIN_CONFIDENCE', 0.7);
 const MAX_OUTPUT_TOKENS = envNumber('ANALYZE_MAX_OUTPUT_TOKENS', 2048);
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 
 const UNREADABLE: Record<Locale, string> = {
   en: 'The ingredient list could not be read reliably. Try a closer, well-lit photo of the ingredients.',
@@ -279,18 +279,23 @@ async function handlePost(req: Request, userId: string): Promise<Response> {
       }
     };
 
-    let analysis = await runModel(imageBase64, mediaType);
+    const candidates: { image: string; type: string }[] = [
+      { image: imageBase64, type: mediaType },
+    ];
+    if (imageBase64 !== originalImage) {
+      candidates.push({ image: originalImage, type: originalMediaType });
+    }
 
-    // A wrong rotation or an unnecessary rescale can make an otherwise readable
-    // photo unreadable. Retry with the original pixels before giving up.
-    if (
-      !useText &&
-      analysis.output.status === 'UNKNOWN' &&
-      originalImage !== imageBase64
-    ) {
-      console.log('[analyze] retrying with the original image');
-      const original = await runModel(originalImage, originalMediaType);
-      if (original.output.status !== 'UNKNOWN') analysis = original;
+    let analysis = await runModel(candidates[0].image, candidates[0].type);
+
+    // A bad rotation, an unnecessary rescale or plain model variance can make an
+    // otherwise readable photo unreadable. Retry at most once before UNKNOWN.
+    if (analysis.output.status === 'UNKNOWN' && candidates.length > 1) {
+      console.log('[analyze] retrying vision scan with the original image');
+      analysis = await runModel(candidates[1].image, candidates[1].type);
+    } else if (analysis.output.status === 'UNKNOWN') {
+      console.log('[analyze] retrying vision scan after UNKNOWN');
+      analysis = await runModel(candidates[0].image, candidates[0].type);
     }
 
     const output = sanitizeAnalysis(analysis.output, locale);
