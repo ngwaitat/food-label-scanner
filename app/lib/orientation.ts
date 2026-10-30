@@ -16,10 +16,15 @@ const CORRECTION: Record<z.infer<typeof RotationSchema>['textDirection'], number
 };
 
 const PROBE_MAX_EDGE = 768;
+// The vision model reads dense label print best at this size. Phone photos that
+// arrive smaller lose detail, so upscale them (at most 2x).
+const TARGET_LONG_EDGE = 1600;
+const MAX_UPSCALE = 2;
 
-export interface OrientedImage {
+export interface NormalizedImage {
   imageBase64: string;
   rotation: number;
+  changed: boolean;
 }
 
 function stripDataUrl(dataUrl: string): string {
@@ -27,11 +32,17 @@ function stripDataUrl(dataUrl: string): string {
   return comma === -1 ? dataUrl : dataUrl.slice(comma + 1);
 }
 
-function rotateImage(image: Awaited<ReturnType<typeof loadImage>>, rotation: number): string {
-  const canvas =
-    rotation === 180
-      ? createCanvas(image.width, image.height)
-      : createCanvas(image.height, image.width);
+function render(
+  image: Awaited<ReturnType<typeof loadImage>>,
+  rotation: number,
+  scale: number
+): string {
+  const rotatedWidth = rotation === 90 || rotation === 270 ? image.height : image.width;
+  const rotatedHeight = rotation === 90 || rotation === 270 ? image.width : image.height;
+  const canvas = createCanvas(
+    Math.max(1, Math.round(rotatedWidth * scale)),
+    Math.max(1, Math.round(rotatedHeight * scale))
+  );
   const ctx = canvas.getContext('2d');
 
   if (rotation === 90) {
@@ -40,80 +51,96 @@ function rotateImage(image: Awaited<ReturnType<typeof loadImage>>, rotation: num
   } else if (rotation === 180) {
     ctx.translate(canvas.width, canvas.height);
     ctx.rotate(Math.PI);
-  } else {
+  } else if (rotation === 270) {
     ctx.translate(0, canvas.height);
     ctx.rotate(-Math.PI / 2);
   }
+  ctx.scale(scale, scale);
   ctx.drawImage(image, 0, 0);
 
   return `data:image/jpeg;base64,${canvas.toBuffer('image/jpeg', 90).toString('base64')}`;
 }
 
+async function detectRotation(
+  image: Awaited<ReturnType<typeof loadImage>>,
+  model: LanguageModel,
+  cacheKey: string
+): Promise<number> {
+  const cached = await cacheGet<{ rotation: number }>(cacheKey).catch(() => null);
+  if (cached) return cached.rotation;
+
+  const probeScale = Math.min(1, PROBE_MAX_EDGE / Math.max(image.width, image.height));
+  const probeCanvas = createCanvas(
+    Math.max(1, Math.round(image.width * probeScale)),
+    Math.max(1, Math.round(image.height * probeScale))
+  );
+  probeCanvas.getContext('2d').drawImage(image, 0, 0, probeCanvas.width, probeCanvas.height);
+  const probeUrl = `data:image/jpeg;base64,${probeCanvas
+    .toBuffer('image/jpeg', 75)
+    .toString('base64')}`;
+
+  let rotation = 0;
+  try {
+    const { output } = await generateText({
+      model,
+      output: Output.object({ schema: RotationSchema }),
+      temperature: 0,
+      maxOutputTokens: 64,
+      providerOptions: { deepseek: { thinking: { type: 'disabled' as const } } },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Look at the main product label where the ingredients are printed. Describe how that text is oriented in the image: "upright" if it reads normally, "clockwise90" if it is rotated 90° clockwise, "counterclockwise90" if it is rotated 90° counter-clockwise, or "upsideDown" if it is rotated 180°. Ignore barcodes, logos and small vertical side text.',
+            },
+            { type: 'file', mediaType: 'image/jpeg', data: probeUrl },
+          ],
+        },
+      ],
+    });
+    rotation = CORRECTION[output.textDirection];
+  } catch {
+    return 0;
+  }
+
+  await cacheSet(cacheKey, { rotation });
+  return rotation;
+}
+
 // Photos shared through messaging apps often arrive rotated by 90° or 180° with
 // no EXIF orientation, and the vision model then misreads the small print (and
-// invents ingredients). Ask the model for the printed text direction, then bake
-// the correction into the pixels so the classification call sees upright text.
-export async function normalizeOrientation(
+// invents ingredients). Normalise the pixels to upright, 1600px input instead.
+export async function normalizeImage(
   imageBase64: string,
   model: LanguageModel,
   cacheKeyPrefix: string
-): Promise<OrientedImage> {
-  const cacheKey = `${cacheKeyPrefix}:orientation:${hashKey(imageBase64)}`;
-
-  let rotation = (await cacheGet<{ rotation: number }>(cacheKey).catch(() => null))?.rotation ?? null;
-
-  if (rotation === null) {
-    let image;
-    try {
-      image = await loadImage(Buffer.from(stripDataUrl(imageBase64), 'base64'));
-    } catch {
-      return { imageBase64, rotation: 0 };
-    }
-
-    const probeScale = Math.min(1, PROBE_MAX_EDGE / Math.max(image.width, image.height));
-    const probeCanvas = createCanvas(
-      Math.max(1, Math.round(image.width * probeScale)),
-      Math.max(1, Math.round(image.height * probeScale))
-    );
-    probeCanvas.getContext('2d').drawImage(image, 0, 0, probeCanvas.width, probeCanvas.height);
-    const probeUrl = `data:image/jpeg;base64,${probeCanvas
-      .toBuffer('image/jpeg', 75)
-      .toString('base64')}`;
-
-    try {
-      const { output } = await generateText({
-        model,
-        output: Output.object({ schema: RotationSchema }),
-        temperature: 0,
-        maxOutputTokens: 64,
-        providerOptions: { deepseek: { thinking: { type: 'disabled' as const } } },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Look at the printed text on this food package. Describe how the text is oriented in the image: "upright" if it reads normally, "clockwise90" if it is rotated 90° clockwise, "counterclockwise90" if it is rotated 90° counter-clockwise, or "upsideDown" if it is rotated 180°. Judge only the printed text.',
-              },
-              { type: 'file', mediaType: 'image/jpeg', data: probeUrl },
-            ],
-          },
-        ],
-      });
-      rotation = CORRECTION[output.textDirection];
-    } catch {
-      return { imageBase64, rotation: 0 };
-    }
-
-    await cacheSet(cacheKey, { rotation });
+): Promise<NormalizedImage> {
+  let image;
+  try {
+    image = await loadImage(Buffer.from(stripDataUrl(imageBase64), 'base64'));
+  } catch {
+    return { imageBase64, rotation: 0, changed: false };
   }
 
-  if (!rotation) return { imageBase64, rotation: 0 };
+  const rotation = await detectRotation(
+    image,
+    model,
+    `${cacheKeyPrefix}:orientation:${hashKey(imageBase64)}`
+  );
+
+  const rotatedWidth = rotation === 90 || rotation === 270 ? image.height : image.width;
+  const rotatedHeight = rotation === 90 || rotation === 270 ? image.width : image.height;
+  const longEdge = Math.max(rotatedWidth, rotatedHeight);
+  const scale = Math.min(TARGET_LONG_EDGE / Math.max(longEdge, 1), MAX_UPSCALE);
+
+  const unchanged = rotation === 0 && Math.abs(longEdge - TARGET_LONG_EDGE) <= 1;
+  if (unchanged) return { imageBase64, rotation: 0, changed: false };
 
   try {
-    const image = await loadImage(Buffer.from(stripDataUrl(imageBase64), 'base64'));
-    return { imageBase64: rotateImage(image, rotation), rotation };
+    return { imageBase64: render(image, rotation, scale), rotation, changed: true };
   } catch {
-    return { imageBase64, rotation: 0 };
+    return { imageBase64, rotation: 0, changed: false };
   }
 }

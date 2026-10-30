@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Locale } from '../i18n';
 
 export const AnalysisSchema = z.object({
   status: z.enum([
@@ -72,17 +73,119 @@ const NOT_PUNGENT = [
   'anise', 'turmeric',
 ];
 
+const ANIMAL_TERMS: { category: 'DAIRY' | 'EGG' | 'MEAT' | 'FISH_SEAFOOD'; terms: string[] }[] = [
+  {
+    category: 'DAIRY',
+    terms: [
+      '牛奶', '奶粉', '奶類', '奶类', '乳粉', '乳清', '乳糖', '芝士', '起司', '奶酪', '乳酪',
+      '忌廉', '奶油', '牛油', '黃油', '黄油', '煉奶', '炼奶', '淡奶', '酪蛋白', '乳製品', '乳制品',
+      '雪糕', '冰淇淋', '馬斯卡彭', '马斯卡彭', '莫扎瑞拉', '車打', '车打', '帕馬森', '帕玛森',
+      'milk', 'cheese', 'cream', 'butter', 'whey', 'casein', 'lactose', 'yoghurt', 'yogurt',
+      'mascarpone', 'cheddar', 'mozzarella', 'parmesan', 'ghee', 'buttermilk', 'dairy',
+      'icecream',
+    ],
+  },
+  {
+    category: 'EGG',
+    terms: [
+      '雞蛋', '鸡蛋', '蛋黃', '蛋黄', '蛋粉', '全蛋', '蛋液', '蛋清', '蛋黃醬', '蛋黄酱',
+      '皮蛋', '咸蛋', '鹹蛋', 'egg', 'albumen', 'mayonnaise',
+    ],
+  },
+  {
+    category: 'MEAT',
+    terms: [
+      '豬', '猪', '牛肉', '雞肉', '鸡肉', '羊肉', '鴨肉', '鸭肉', '鵝肉', '鹅肉', '火腿', '煙肉',
+      '烟肉', '煙燻肉', '培根', '香腸', '香肠', '肉鬆', '肉松', '肉汁', '肉類', '肉类', '明膠',
+      '明胶', '魚膠', '鱼胶', '雞精', '鸡精', '雞湯', '鸡汤', '豬骨', '猪骨', '牛骨', '雞骨',
+      '鸡骨', 'pork', 'beef', 'chicken', 'lamb', 'mutton', 'duck', 'goose', 'ham', 'bacon',
+      'sausage', 'gelatin', 'gelatine', 'lard', 'meat', 'broth', 'stock',
+    ],
+  },
+  {
+    category: 'FISH_SEAFOOD',
+    terms: [
+      '魚', '鱼', '蝦', '虾', '蟹', '蜆', '蚬', '蠔', '蚝', '貝', '贝', '魷', '鱿', '海鮮', '海鲜',
+      '魚露', '鱼露', '蝦醬', '虾酱', '柴魚', '柴鱼', '鰹魚', '鲣鱼', '魚粉', '鱼粉', '魚丸', '鱼丸',
+      '龍蝦', '龙虾', '扇貝', '扇贝', '蜆肉', '蚬肉', 'fish', 'shrimp', 'prawn', 'crab', 'oyster',
+      'clam', 'squid', 'scallop', 'anchovy', 'seafood', 'tuna', 'salmon', 'bonito', 'sardine',
+      'lobster', 'mussel', 'cuttlefish', 'octopus',
+    ],
+  },
+];
+
+// "Coconut milk", "soy cream", "vegetarian oyster sauce" and 素蠔油 are plant-based.
+const PLANT_MARKERS = [
+  '植物', '素', '椰', '豆', '燕麥', '燕麦', '杏仁', '腰果', '米', '蔬菜', '花生', '可可', 'vegan',
+  'vegetarian', 'plant', 'vegetable', 'coconut', 'soy', 'oat', 'almond', 'cashew', 'rice',
+  'peanut', 'nut', 'cocoa', 'nondairy', 'dairyfree', 'meatfree', 'meatless', 'eggfree',
+  'gelatinfree',
+];
+
+const FLAG_REASONS: Record<Locale, Record<'DAIRY' | 'EGG' | 'MEAT' | 'FISH_SEAFOOD', string>> = {
+  en: {
+    DAIRY: 'Dairy ingredient named on the label.',
+    EGG: 'Egg ingredient named on the label.',
+    MEAT: 'Meat ingredient named on the label.',
+    FISH_SEAFOOD: 'Fish or seafood ingredient named on the label.',
+  },
+  'zh-Hant': {
+    DAIRY: '標籤列明含奶類成分。',
+    EGG: '標籤列明含蛋類成分。',
+    MEAT: '標籤列明含肉類成分。',
+    FISH_SEAFOOD: '標籤列明含魚類或海鮮成分。',
+  },
+  'zh-Hans': {
+    DAIRY: '标签列明含奶类成分。',
+    EGG: '标签列明含蛋类成分。',
+    MEAT: '标签列明含肉类成分。',
+    FISH_SEAFOOD: '标签列明含鱼类或海鲜成分。',
+  },
+};
+
 function isMistakenPungent(flag: FlaggedIngredient): boolean {
   if (flag.category !== 'FIVE_PUNGENT') return false;
   const name = normalizeIngredient(flag.name);
   return NOT_PUNGENT.some((term) => name.includes(normalizeIngredient(term)));
 }
 
+function isPlantBased(name: string): boolean {
+  return PLANT_MARKERS.some((marker) => name.includes(normalizeIngredient(marker)));
+}
+
+// The model reads the list but occasionally forgets to flag an obvious dairy,
+// egg, meat or seafood entry (e.g. "Mascarpone Cheese"). Recover those flags
+// deterministically so the status cannot contradict the transcribed list.
+function addMissingAnimalFlags(
+  ingredients: AnalysisResult['ingredients'],
+  existing: FlaggedIngredient[],
+  locale: Locale
+): FlaggedIngredient[] {
+  const present = new Set(existing.map((flag) => normalizeIngredient(flag.name)));
+  const added = [...existing];
+
+  for (const item of ingredients) {
+    const name = normalizeIngredient(item.name);
+    if (!name || present.has(name)) continue;
+
+    const plant = isPlantBased(name);
+    for (const { category, terms } of ANIMAL_TERMS) {
+      if (plant) continue;
+      if (!terms.some((term) => name.includes(normalizeIngredient(term)))) continue;
+      added.push({ name: item.name, category, reason: FLAG_REASONS[locale][category] });
+      present.add(name);
+      break;
+    }
+  }
+
+  return added;
+}
+
 // The model sometimes invents ingredients (and flags to match) when the print is
 // small or blurred, e.g. adding 蒜/洋蔥 to a list that does not contain them.
 // Drop any flag that the transcribed list itself does not support, deduplicate,
 // and keep the status consistent with the flags that survive.
-export function sanitizeAnalysis(result: AnalysisResult): AnalysisResult {
+export function sanitizeAnalysis(result: AnalysisResult, locale: Locale): AnalysisResult {
   const seen = new Set<string>();
   const ingredients: AnalysisResult['ingredients'] = [];
   for (const item of result.ingredients) {
@@ -109,29 +212,23 @@ export function sanitizeAnalysis(result: AnalysisResult): AnalysisResult {
     return { ...result, ingredients, status: 'UNKNOWN', flaggedIngredients: [] };
   }
 
-  let status = result.status;
-  const categories = new Set(flagged.map((flag) => flag.category));
-  const animal = categories.has('MEAT') || categories.has('FISH_SEAFOOD');
+  const allFlags = addMissingAnimalFlags(ingredients, flagged, locale);
 
-  if (animal && status !== 'NON_VEGETARIAN') {
+  let status = result.status;
+  const animal = allFlags.some(
+    (flag) => flag.category === 'MEAT' || flag.category === 'FISH_SEAFOOD'
+  );
+
+  if (animal) {
     status = 'NON_VEGETARIAN';
-  } else if (status === 'NON_VEGETARIAN' && !animal) {
-    status = statusFromFlags(flagged);
-  } else if (status === 'VEGAN' && flagged.length > 0) {
-    status = statusFromFlags(flagged);
-  } else if (status === 'PUNGENT_VEGETARIAN' && !categories.has('FIVE_PUNGENT')) {
-    status = statusFromFlags(flagged);
-  } else if (
-    (status === 'LACTO_VEGETARIAN' ||
-      status === 'OVO_VEGETARIAN' ||
-      status === 'LACTO_OVO_VEGETARIAN') &&
-    !categories.has('DAIRY') &&
-    !categories.has('EGG')
-  ) {
-    status = statusFromFlags(flagged);
+  } else if (status !== 'NON_VEGETARIAN') {
+    // An explicit NON_VEGETARIAN with no animal flag is kept: under-reporting a
+    // warning is worse than leaving a conservative status in place.
+    if (allFlags.length > 0) status = statusFromFlags(allFlags);
+    else if (status === 'PUNGENT_VEGETARIAN') status = 'VEGAN';
   }
 
-  return { ...result, status, ingredients, flaggedIngredients: flagged };
+  return { ...result, status, ingredients, flaggedIngredients: allFlags };
 }
 
 function closeBrackets(text: string): string | null {
