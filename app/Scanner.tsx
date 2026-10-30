@@ -141,9 +141,9 @@ export default function Scanner({ initialLocale }: ScannerProps) {
 
     try {
       const compressedFile = await imageCompression(file, {
-        maxSizeMB: 0.4,
-        maxWidthOrHeight: 1024,
-        initialQuality: 0.8,
+        maxSizeMB: 1.2,
+        maxWidthOrHeight: 1600,
+        initialQuality: 0.9,
         useWebWorker: true,
       });
 
