@@ -210,7 +210,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     setShareMessage(null);
 
     let blob: Blob | null = null;
-    const text = `${t.title}\n${t.statusLabels[result.status]} — ${result.summary}\n\n${window.location.origin}`;
+    const text = `${t.title}\n${t.statusLabels[result.status]} — ${result.summary}\n\n${t.aiDisclaimer}\n${window.location.origin}`;
 
     try {
       blob = await buildShareCard({
@@ -227,6 +227,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
         })),
         origin: window.location.origin,
         viaLabel: t.shareVia,
+        disclaimer: t.aiDisclaimer,
         locale,
       });
 
@@ -470,6 +471,11 @@ export default function Scanner({ initialLocale }: ScannerProps) {
               <p className="text-center text-xs text-gray-500">{shareMessage}</p>
             )}
           </div>
+
+          <p className="flex items-start gap-1.5 border-t border-gray-200 pt-3 text-[11px] leading-relaxed text-gray-500">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" />
+            <span>{t.aiDisclaimer}</span>
+          </p>
         </div>
       )}
 

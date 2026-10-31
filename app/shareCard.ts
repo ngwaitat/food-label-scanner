@@ -33,6 +33,7 @@ export interface ShareCardInput {
   flagged: ShareCardFlaggedItem[];
   origin: string;
   viaLabel: string;
+  disclaimer: string;
   locale: Locale;
 }
 
@@ -287,6 +288,14 @@ export async function buildShareCard(input: ShareCardInput): Promise<Blob> {
     ellipsize(ctx, `${input.viaLabel} ${input.appTitle}`, CONTENT_WIDTH - hostWidth - 40),
     PADDING,
     footerTop + 60
+  );
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = `400 22px ${FONT}`;
+  ctx.fillText(
+    ellipsize(ctx, input.disclaimer, CONTENT_WIDTH),
+    PADDING,
+    footerTop + 108
   );
 
   return canvasToBlob(canvas);
