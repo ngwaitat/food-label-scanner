@@ -31,7 +31,7 @@ const TEXT_MODEL = process.env.DEEPSEEK_TEXT_MODEL ?? VISION_MODEL;
 const OCR_MIN_CHARS = envNumber('OCR_MIN_CHARS', 40);
 const OCR_MIN_CONFIDENCE = envNumber('OCR_MIN_CONFIDENCE', 0.7);
 const MAX_OUTPUT_TOKENS = envNumber('ANALYZE_MAX_OUTPUT_TOKENS', 2048);
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v9';
 
 const UNREADABLE: Record<Locale, string> = {
   en: 'The ingredient list could not be read reliably. Try a closer, well-lit photo of the ingredients.',
@@ -88,7 +88,6 @@ Transcription rules:
 - Keep "name" exactly as printed, in printed order. Do not translate inside "name"; use "translation" only when the printed script differs from the requested language.
 - List at most 40 ingredients, merging duplicates. Never repeat an entry.
 - Product names, flavour names (e.g. 蟹味醬, Crab-flavoured sauce, 海鮮味), serving suggestions (e.g. 蟹味春卷) and marketing claims are NOT ingredients. A word such as 蟹, crab, 魚, fish, 肉 or meat inside a product or flavour name must not make the product non-vegetarian, especially when the name contains 素, 純素, Vegetarian or Vegan, or when the package says 無蟹肉 or 不含海鮮. Judge only by the printed ingredient list.
-- Precautionary statements about the factory or shared equipment (e.g. "may contain traces of…", "produced in a factory where egg, fish or milk are also handled", 可能含有…, 本產品在…廠房內生產) describe cross-contamination, not ingredients. Never copy their contents into "ingredients" and never flag them. A plain allergen declaration such as "Contains: milk" or 本產品含有蛋 does name a real ingredient: transcribe and flag it.
 - Flag an ingredient only if that same ingredient appears in your own "ingredients" list. Never flag a product name, flavour name, or serving suggestion.
 - Flag 五辛 (scallion/onion, garlic, leek, chive, asafoetida) as FIVE_PUNGENT only when the printed list itself names one of them (蒜, 大蒜, 蒜粉, 洋蔥, 蔥, 韭, 薤, 阿魏, garlic, onion, scallion, leek, chive, asafoetida). Never assume a sauce, seasoning or stock contains 五辛.
 - 胡椒, 白胡椒, 花椒, 辣椒, 薑, 姜, 白芷 and 肉桂 are seasonings but NOT 五辛; never flag them as FIVE_PUNGENT.

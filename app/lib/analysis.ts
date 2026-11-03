@@ -122,34 +122,6 @@ const PLANT_MARKERS = [
   'gelatinfree',
 ];
 
-// Precautionary statements describe shared factory equipment, not ingredients.
-// The vision model sometimes transcribes them into the ingredient list, which
-// would otherwise be flagged as animal ingredients (e.g. "produced in a factory
-// where crustacean, egg, fish, peanut, milk and tree nut products are also
-// handled"). A plain "Contains: milk" declaration is not matched here because
-// it names a real ingredient.
-const PRECAUTIONARY_PATTERNS: RegExp[] = [
-  /\bmay (?:also )?contain\b/i,
-  /\btraces? of\b/i,
-  /\bproduced in a (?:factory|facility|plant)\b/i,
-  /\bmanufactured in a (?:factory|facility|plant)\b/i,
-  /\balso (?:handled|processed|packed|produced)\b/i,
-  /\bshared (?:equipment|facility|production)\b/i,
-  /\bsame (?:factory|facility|equipment|production line)\b/i,
-  /可能(?:亦)?含有?/,
-  /含(?:有)?微量/,
-  /廠房|厂房|生產線|生产线|工場|工场/,
-];
-
-function isPrecautionaryStatement(value: string): boolean {
-  return PRECAUTIONARY_PATTERNS.some((pattern) => pattern.test(value));
-}
-
-const WARNING_ANIMAL_HINTS = [
-  '蛋', '奶', '乳', '肉', '甲殼', '甲壳', '魚', '鱼', '蝦', '虾', '蟹', '貝', '贝',
-  'egg', 'fish', 'milk', 'dairy', 'meat', 'shellfish', 'crustacean', 'seafood',
-];
-
 const FLAG_REASONS: Record<Locale, Record<'DAIRY' | 'EGG' | 'MEAT' | 'FISH_SEAFOOD', string>> = {
   en: {
     DAIRY: 'Dairy ingredient named on the label.',
@@ -216,18 +188,6 @@ function isPlantBased(name: string): boolean {
   return PLANT_MARKERS.some((marker) => name.includes(normalizeIngredient(marker)));
 }
 
-function mentionsAnimalIngredient(value: string): boolean {
-  const name = normalizeIngredient(value);
-  // Warning statements list categories ("egg", "魚類"), so bare category words
-  // count here even though they are too broad for ingredient matching.
-  return (
-    ANIMAL_TERMS.some(({ terms }) =>
-      terms.some((term) => name.includes(normalizeIngredient(term)))
-    ) ||
-    WARNING_ANIMAL_HINTS.some((hint) => name.includes(normalizeIngredient(hint)))
-  );
-}
-
 // The model reads the list but occasionally forgets to flag an obvious dairy,
 // egg, meat or seafood entry (e.g. "Mascarpone Cheese"). Recover those flags
 // deterministically so the status cannot contradict the transcribed list.
@@ -263,12 +223,7 @@ function addMissingAnimalFlags(
 export function sanitizeAnalysis(result: AnalysisResult, locale: Locale): AnalysisResult {
   const seen = new Set<string>();
   const ingredients: AnalysisResult['ingredients'] = [];
-  let droppedAnimalWarning = false;
   for (const item of result.ingredients) {
-    if (isPrecautionaryStatement(item.name)) {
-      if (mentionsAnimalIngredient(item.name)) droppedAnimalWarning = true;
-      continue;
-    }
     const key = normalizeIngredient(item.name);
     if (!key || seen.has(key)) continue;
     seen.add(key);
@@ -301,17 +256,11 @@ export function sanitizeAnalysis(result: AnalysisResult, locale: Locale): Analys
 
   if (animal) {
     status = 'NON_VEGETARIAN';
-  } else if (status === 'NON_VEGETARIAN') {
-    // Keep an unexplained NON_VEGETARIAN as a conservative warning. Override it
-    // only when a removed precautionary statement named an animal product, since
-    // that statement can be the sole reason the model saw fish, egg or dairy.
-    if (droppedAnimalWarning) {
-      status = allFlags.length > 0 ? statusFromFlags(allFlags) : 'VEGAN';
-    }
-  } else if (allFlags.length > 0) {
-    status = statusFromFlags(allFlags);
-  } else if (status === 'PUNGENT_VEGETARIAN') {
-    status = 'VEGAN';
+  } else if (status !== 'NON_VEGETARIAN') {
+    // An explicit NON_VEGETARIAN with no animal flag is kept: under-reporting a
+    // warning is worse than leaving a conservative status in place.
+    if (allFlags.length > 0) status = statusFromFlags(allFlags);
+    else if (status === 'PUNGENT_VEGETARIAN') status = 'VEGAN';
   }
 
   return { ...result, status, ingredients, flaggedIngredients: allFlags };
