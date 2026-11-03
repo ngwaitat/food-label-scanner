@@ -274,10 +274,8 @@ export default function Scanner({ initialLocale }: ScannerProps) {
       </button>
 
       <div className="flex justify-center items-start gap-2 pt-8">
-        <div
-          aria-hidden="true"
-          className="logo-blink w-20 h-20 rounded-2xl bg-white shadow-sm"
-        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.jpg" alt="" className="w-20 h-20 rounded-2xl object-cover shadow-sm" />
         <button
           type="button"
           onClick={() => setInfoOpen(true)}
