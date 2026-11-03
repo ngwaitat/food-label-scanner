@@ -1,1 +1,35 @@
 @import 'tailwindcss';
+
+/* Four-frame sprite: open, half-closed, closed, reopening. */
+.logo-blink {
+  background-image: url('/logo-blink.jpg');
+  background-repeat: no-repeat;
+  background-position: 0% 50%;
+  background-size: 400% 100%;
+  animation: logo-blink 5.2s step-end infinite;
+}
+
+@keyframes logo-blink {
+  0%,
+  90% {
+    background-position: 0% 50%;
+  }
+  93% {
+    background-position: 33.333% 50%;
+  }
+  96% {
+    background-position: 66.667% 50%;
+  }
+  98% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-blink {
+    animation: none;
+  }
+}
