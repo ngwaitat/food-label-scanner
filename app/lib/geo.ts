@@ -11,6 +11,16 @@ export interface GeoResult {
   reason: GeoReason;
 }
 
+function envFlag(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') return fallback;
+
+  const value = raw.trim().toLowerCase();
+  if (value === '1' || value === 'true' || value === 'yes' || value === 'on') return true;
+  if (value === '0' || value === 'false' || value === 'no' || value === 'off') return false;
+  return fallback;
+}
+
 function normalizeCountry(value: string | null): string | null {
   if (!value) return null;
   const code = value.trim().toUpperCase();
@@ -28,7 +38,9 @@ function allowedCountries(): string[] {
 }
 
 export function evaluateGeo(request: { headers: Headers }): GeoResult {
-  if (process.env.GEO_DISABLED === '1') {
+  // GEO_RESTRICTION_ENABLED is the documented toggle; GEO_DISABLED is kept for
+  // backwards compatibility with existing deployments.
+  if (!envFlag('GEO_RESTRICTION_ENABLED', true) || process.env.GEO_DISABLED === '1') {
     return { allowed: true, country: null, reason: 'disabled' };
   }
 

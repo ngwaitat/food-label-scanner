@@ -75,7 +75,8 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     clear: clearHistory,
   } = useScanHistory();
   const t = STRINGS[locale];
-  const exhausted = quota?.remaining === 0;
+  const quotaEnabled = quota?.enabled !== false;
+  const exhausted = quotaEnabled && quota?.remaining === 0;
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -128,7 +129,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
     const input = e.target;
     const file = input.files?.[0];
     if (!file) return;
-    if (quota && quota.remaining <= 0) {
+    if (exhausted) {
       input.value = '';
       return;
     }
@@ -336,7 +337,7 @@ export default function Scanner({ initialLocale }: ScannerProps) {
         )}
       </div>
 
-      {quota && (
+      {quota && quotaEnabled && (
         <p
           role="status"
           className={`rounded-lg border px-3 py-2 text-center text-xs ${

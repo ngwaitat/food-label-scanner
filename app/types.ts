@@ -33,6 +33,7 @@ export interface QuotaSnapshot {
   used: number;
   remaining: number;
   resetsAt: number;
+  enabled?: boolean;
 }
 
 export interface AnalyzeResponse extends AnalysisResult {

@@ -22,6 +22,20 @@ const memory = new Map<string, MemoryUsage>();
 
 let warnedAboutSecret = false;
 
+function envFlag(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') return fallback;
+
+  const value = raw.trim().toLowerCase();
+  if (value === '1' || value === 'true' || value === 'yes' || value === 'on') return true;
+  if (value === '0' || value === 'false' || value === 'no' || value === 'off') return false;
+  return fallback;
+}
+
+export function dailyLimitEnabled(): boolean {
+  return envFlag('DAILY_SCAN_LIMIT_ENABLED', true);
+}
+
 export function dailyLimit(): number {
   const raw = process.env.DAILY_SCAN_LIMIT;
   if (!raw || raw.trim() === '') return 10;
@@ -173,7 +187,12 @@ function snapshot(used: number, limit: number, resetsAt: number): QuotaSnapshot 
     used: safeUsed,
     remaining: Math.max(0, limit - safeUsed),
     resetsAt,
+    enabled: true,
   };
+}
+
+function disabledSnapshot(): QuotaSnapshot {
+  return { limit: 0, used: 0, remaining: 0, resetsAt: 0, enabled: false };
 }
 
 function pruneMemory(now: number): void {
@@ -200,6 +219,8 @@ function memoryUsed(key: string, now: number): number {
 }
 
 export async function getQuota(userId: string, now = Date.now()): Promise<QuotaSnapshot> {
+  if (!dailyLimitEnabled()) return disabledSnapshot();
+
   const { dayKey, resetsAt } = hongKongDay(now);
   const key = quotaKey(userId, dayKey);
   const limit = dailyLimit();
@@ -227,6 +248,10 @@ export async function consumeQuota(
   now = Date.now()
 ): Promise<QuotaReservation> {
   const { dayKey, resetsAt } = hongKongDay(now);
+  if (!dailyLimitEnabled()) {
+    return { allowed: true, quota: disabledSnapshot(), dayKey };
+  }
+
   const key = quotaKey(userId, dayKey);
   const limit = dailyLimit();
   const expiresAt = resetsAt + HOUR_MS;
@@ -261,6 +286,8 @@ export async function refundQuota(
   dayKey: string,
   now = Date.now()
 ): Promise<void> {
+  if (!dailyLimitEnabled()) return;
+
   const key = quotaKey(userId, dayKey);
 
   if (redisEnabled) {
